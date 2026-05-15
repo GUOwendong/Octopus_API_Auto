@@ -1,0 +1,38 @@
+# 虚拟环境
+.venv/
+venv/
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Pytest 缓存
+.pytest_cache/
+
+# Allure 报告
+reports/allure-results/
+reports/allure-report/
+
+# 测试报告
+*.html
+report/
+
+# 日志
+logs/
+
+# 截图临时文件
+screenshots/
+temp/
+
+# 编辑器
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+
+# 系统
+.DS_Store
+Thumbs.db
