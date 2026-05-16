@@ -8,7 +8,7 @@
 import os
 import pytest
 import requests
-from config.get_token import get_token
+from config.token_manager import get_token
 from common.file_utils import FileUtil
 from config.global_config import base_dir
 token = get_token()

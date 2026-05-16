@@ -7,7 +7,7 @@
 
 import pytest
 import requests
-from config.get_token import get_token
+from config.token_manager import get_token
 token = get_token()
 
 # 1.创建部门

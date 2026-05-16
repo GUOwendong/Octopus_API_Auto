@@ -43,3 +43,32 @@ def get_token():
     cache["expires_time"] = now + expires_in - 60
 
     return access_token
+
+
+
+import requests
+from config.settings import CONFIG
+from base.logger import get_logger
+
+logger = get_logger()
+
+class WeComTokenManager:
+    _token = None
+
+    @classmethod
+    def get_token(cls):
+        if cls._token:
+            return cls._token
+
+        url = f"{CONFIG.base_url}/cgi-bin/gettoken"
+        params = {
+            "corpid": CONFIG.corp_id,
+            "corpsecret": CONFIG.contact_secret
+        }
+
+        resp = requests.get(url, params=params).json()
+        if resp["errcode"] != 0:
+            raise RuntimeError("获取 token 失败")
+
+        cls._token = resp["access_token"]
+        return cls._token

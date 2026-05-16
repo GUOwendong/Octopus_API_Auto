@@ -1,0 +1,157 @@
+name: UV-Pytest-Allure CI          # 给这个 CI 任务起个名字
+
+on:                                # 什么时候触发这个任务
+  push:
+    branches: [ main ]             # 往 main 推代码 ➡️ 触发
+  pull_request:
+    branches: [ main ]             # 往 main 提合并请求 ➡️ 触发
+
+permissions:
+  contents: write  # 部署到 gh-pages 需要写权限
+
+jobs:
+  test:                            # 定义一个叫 test 的任务
+    runs-on: ubuntu-latest         # 在最新版的 Ubuntu 虚拟机里跑
+    env:
+      ALLURE_RESULTS_DIR: ${{ github.workspace }}/allure-results
+      ALLURE_REPORT_DIR: ${{ github.workspace }}/allure-report
+    steps:
+      # 第一步：从 GitHub 把代码拉到虚拟机里
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      # 第二步：安装 Python
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      # 第三步：从 GitHub 缓存查找安装 uv  (超级加速)
+      - name: 缓存 uv 依赖
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      # 第四步：安装 uv
+      - name: 安装 uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      # 第五步：用 uv 安装项目所有依赖
+      - name: uv 同步依赖
+        run: uv sync --frozen
+
+      # 第六步：安装 Allure 命令行（用来生成测试报告）
+      - name: 安装 Allure CLI
+        run: |
+          wget https://github.com/allure-framework/allure2/releases/download/2.39.0/allure-2.39.0.tgz
+          tar -zxf allure-2.39.0.tgz
+          sudo cp -r allure-2.39.0/bin/* /usr/local/bin/
+          sudo cp -r allure-2.39.0/lib /usr/local/lib/
+
+      # 第七步：执行 pytest 测试，生成 allure 原始结果（同时记录测试成功还是失败）
+      - name: 执行测试生成Allure结果
+        id: test
+        run: |
+          mkdir -p $ALLURE_RESULTS_DIR
+          uv run pytest --alluredir=$ALLURE_RESULTS_DIR
+          echo "EXIT_CODE=$?" >> $GITHUB_OUTPUT
+
+      # 第八步：把原始结果 → 生成可打开的网页报告
+      - name: 生成Allure静态报告
+        if: always()
+        run: allure generate $ALLURE_RESULTS_DIR -o $ALLURE_REPORT_DIR --clean
+
+      # 第九步：把报告上传到 GitHub，方便下载查看
+      - name: 上传 Allure 报告 artifact（用于通知附件）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: ${{ env.ALLURE_REPORT_DIR }}
+
+      # 第十步：部署报告到 Github Pages
+      - name: 部署报告到 GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ${{ env.ALLURE_REPORT_DIR }}
+          destination_dir: allure-report   # 部署到子目录，访问地址: https://用户名.github.io/仓库名/allure-report/
+
+      # 第十一步：自动发钉钉消息
+      - name: 发送钉钉通知
+        if: always()
+        env:
+          DING_WEBHOOK: ${{ secrets.DING_WEBHOOK }}
+          EXIT_CODE: ${{ steps.test.outputs.EXIT_CODE }}
+        run: |
+          if [ "$EXIT_CODE" = "0" ]; then
+            STATUS="✅ 测试通过"
+          else
+            STATUS="❌ 测试失败"
+          fi
+          
+          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure-report/"
+          CONTENT=$'自动化测试完成\n分支：'"${{ github.ref_name }}"$'\nSHA：'"${{ github.sha }}"$'\n结果：'"$STATUS"$'\n报告：'"$REPORT_URL"
+
+          JSON=$(jq -n --arg content "$CONTENT" '{msgtype: "text", text: {content: $content}}')
+
+          curl -s -X POST "$DING_WEBHOOK" -H "Content-Type: application/json" -d "$JSON"
+
+      # 第十二步：自动发送企业微信通知
+      - name: 发送企业微信通知
+        if: always()
+        env:
+          WECOM_WEBHOOK: ${{ secrets.WECOM_WEBHOOK }}
+          EXIT_CODE: ${{ steps.test.outputs.EXIT_CODE }}
+        run: |
+          if [ "$EXIT_CODE" = "0" ]; then
+            STATUS="✅ 测试通过"
+          else
+            STATUS="❌ 测试失败"
+          fi
+          
+          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure-report/"
+          CONTENT=$'自动化测试完成\n分支：'"${{ github.ref_name }}"$'\nSHA：'"${{ github.sha }}"$'\n结果：'"$STATUS"$'\n报告：'"$REPORT_URL"
+          
+          JSON=$(jq -n --arg content "$CONTENT" '{msgtype: "text", text: {content: $content}}')
+
+          curl -s -X POST "$WECOM_WEBHOOK" -H "Content-Type: application/json" -d "$JSON"
+            
+      # 第十三步：邮件通知需要先下载 artifact 作为附件
+      - name: 下载报告 artifact（用于邮件附件）
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-report
+          path: ${{ env.ALLURE_REPORT_DIR }}
+
+      - name: 打包报告为 zip
+        if: always()
+        run: |
+          cd $ALLURE_REPORT_DIR
+          zip -r ${{ github.workspace }}/allure-report.zip .
+
+      # 第十四步：自动发送邮件通知
+      - name: 发送邮件通知
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.qq.com        # 修改为你的 SMTP 服务器
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "测试${{ steps.test.outputs.EXIT_CODE == '0' && '通过' || '失败' }} - ${{ github.ref_name }}"
+          to: ${{ secrets.MAIL_TO }}
+          from: GitHub CI
+          html_body: |
+            <h3>自动化测试结果: ${{ steps.test.outputs.EXIT_CODE == '0' && '✅ 通过' || '❌ 失败' }}</h3>
+            <p>分支: <strong>${{ github.ref_name }}</strong></p>
+            <p>提交: <code>${{ github.sha }}</code></p>
+            <p>在线报告: <a href="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure-report/">点击查看</a></p>
+            <p>详细报告见附件。</p>
+          attachments: ${{ github.workspace }}/allure-report.zip

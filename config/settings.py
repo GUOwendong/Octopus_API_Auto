@@ -29,3 +29,12 @@ SCREENSHOT_DIR = os.path.join(ROOT_PATH, "screenshots")
 
 os.makedirs(REPORT_DIR, exist_ok=True)
 os.makedirs(SCREENSHOT_DIR, exist_ok=True)
+
+
+
+
+import os
+from config.env_config import ENV_MAP, Env
+
+ENV = Env(os.getenv("ENV", "test"))
+CONFIG = ENV_MAP[ENV]
