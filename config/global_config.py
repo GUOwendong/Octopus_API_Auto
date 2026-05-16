@@ -1,32 +1,44 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-@Author: guowendong
-@Desc: Conducting code practice and testing development work
-"""
-
+"""全局配置：路径、环境、API 地址、超时等"""
 import os
+from enum import Enum
+from pathlib import Path
 
-#================================ 项目核心路径 ====================================
-#项目根目录（自动获取，永远不用改）
-base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# ==================== 项目路径 ====================
+# 取当前文件的绝对路径，.parent回退到上一级，回到项目根目录下
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
+LOGS_DIR = BASE_DIR / "logs"
+SCREENSHOTS_DIR = BASE_DIR / "screenshots"
+REPORTS_DIR = BASE_DIR / "reports"
+ALLURE_RESULTS_DIR = REPORTS_DIR / "allure-results"
+ALLURE_REPORT_DIR = REPORTS_DIR / "allure-report"
 
-#================================ 全局通用配置 ====================================
+# 自动创建必要目录
+for d in [LOGS_DIR, SCREENSHOTS_DIR, ALLURE_RESULTS_DIR, ALLURE_REPORT_DIR]:
+    d.mkdir(parents=True, exist_ok=True)
 
-#全局超时时间
-global_timeout = 10
+# ==================== 环境配置 ====================
+class Env(str, Enum):
+    DEV = "dev"
+    TEST = "test"
+    PROD = "prod"
 
-#截图保存路径
-screenshot_path = os.path.join(base_dir, "temp/screenshots")  # noqa
+CURRENT_ENV = Env(os.getenv("TEST_ENV", "test"))
 
-# Allure 原始结果路径(json数据)
-allure_result_path = os.path.join(base_dir, "reports/allure-results")  # noqa
+# API 基础地址（按环境区分）
+API_BASE_URL_MAP = {
+    Env.DEV: "http://127.0.0.1:8000",
+    Env.TEST: "https://qyapi.weixin.qq.com",
+    Env.PROD: "https://qyapi.weixin.qq.com",
+}
+API_BASE_URL = API_BASE_URL_MAP[CURRENT_ENV]
+TIMEOUT = int(os.getenv("API_TIMEOUT", "30"))
 
-# 测试报告路径（html报告）
-allure_report_path = os.path.join(base_dir, "reports/allure-reports")   # noqa
-
-# 日志文件夹（用来创建目录）
-log_dir = os.path.join(base_dir, "logs")                   # noqa
-
-# 日志文件（给 logger 写入用）
-log_path = os.path.join(log_dir, "interface_auto.log")           # noqa
+# 企业微信配置（从环境变量读取，避免硬编码）
+WECOM_CONFIG = {
+    "corp_id": os.getenv("WECOM_CORP_ID", "your_corp_id"),
+    "contact_secret": os.getenv("WECOM_CONTACT_SECRET", "your_secret"),
+    "base_url": "https://qyapi.weixin.qq.com",
+}

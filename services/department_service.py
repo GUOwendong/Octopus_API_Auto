@@ -1,30 +1,60 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-@Author: guowendong
-@Desc: Conducting code practice and testing development work
-"""
-from base.api_client import ApiClient
-from base.wecom_token import WeComTokenManager
+"""企业微信部门服务封装"""
+from typing import Dict, Any, Optional
+from common.api_client import ApiClient
+from common.wecom_token import get_token
+from common.wecom_error_code import is_success, extract_error_from_response
+from common.log_utils import log
+
 
 class DepartmentService:
-    PATH = "/cgi-bin/department"
+    def __init__(self, base_url: str = "https://qyapi.weixin.qq.com"):
+        self.client = ApiClient(base_url=base_url)
+        self._token = None
 
-    def __init__(self):
-        self.client = ApiClient("https://qyapi.weixin.qq.com")
-        self.token = WeComTokenManager.get_token()
+    def _ensure_token(self):
+        if self._token is None:
+            self._token = get_token()
+            self.client.set_auth_token(self._token)
 
-    def create(self, name, parentid):
-        return self.client.request(
-            "POST",
-            f"{self.PATH}/create",
-            params={"access_token": self.token},
-            json={"name": name, "parentid": parentid}
-        )
+    def _request(self, method: str, path: str, **kwargs) -> Dict[str, Any]:
+        self._ensure_token()
+        if method.upper() == "GET":
+            resp = self.client.get_json(path, **kwargs)
+        elif method.upper() == "POST":
+            resp = self.client.post_json(path, **kwargs)
+        else:
+            raise ValueError(f"不支持的方法: {method}")
+        if not is_success(resp):
+            error = extract_error_from_response(resp)
+            log.error(f"企业微信 API 错误: {error}")
+            raise RuntimeError(f"部门服务调用失败: {error}")
+        return resp
 
-    def delete(self, id):
-        return self.client.request(
-            "GET",
-            f"{self.PATH}/delete",
-            params={"access_token": self.token, "id": id}
-        )
+    def create(self, name: str, parentid: int = 1, dept_id: int = None) -> Dict:
+        path = "/cgi-bin/department/create"
+        body = {"name": name, "parentid": parentid}
+        if dept_id:
+            body["id"] = dept_id
+        return self._request("POST", path, json=body)
+
+    def update(self, dept_id: int, name: str = None, parentid: int = None) -> Dict:
+        path = "/cgi-bin/department/update"
+        body = {"id": dept_id}
+        if name:
+            body["name"] = name
+        if parentid:
+            body["parentid"] = parentid
+        return self._request("POST", path, json=body)
+
+    def delete(self, dept_id: int) -> Dict:
+        path = "/cgi-bin/department/delete"
+        return self._request("GET", path, params={"id": dept_id})
+
+    def list(self, parent_id: int = None) -> Dict:
+        path = "/cgi-bin/department/list"
+        params = {}
+        if parent_id:
+            params["id"] = parent_id
+        return self._request("GET", path, params=params)

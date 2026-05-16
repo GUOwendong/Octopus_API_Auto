@@ -24,7 +24,7 @@ jobs:
       - name: 设置 Python 环境
         uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: "3.13"
 
       # 第三步：从 GitHub 缓存查找安装 uv  (超级加速)
       - name: 缓存 uv 依赖
@@ -41,15 +41,22 @@ jobs:
 
       # 第五步：用 uv 安装项目所有依赖
       - name: uv 同步依赖
-        run: uv sync --frozen
+        run: |
+          if [ -f uv.lock ]; then
+            uv sync --frozen
+          else
+            uv sync
+          fi
 
       # 第六步：安装 Allure 命令行（用来生成测试报告）
-      - name: 安装 Allure CLI
+      - name: 安装 Java 和 Allure CLI
         run: |
-          wget https://github.com/allure-framework/allure2/releases/download/2.39.0/allure-2.39.0.tgz
-          tar -zxf allure-2.39.0.tgz
-          sudo cp -r allure-2.39.0/bin/* /usr/local/bin/
-          sudo cp -r allure-2.39.0/lib /usr/local/lib/
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jre-headless wget
+          wget -qO allure.tgz https://github.com/allure-framework/allure2/releases/download/2.39.0/allure-2.39.0.tgz
+          tar -zxf allure.tgz
+          sudo mv allure-2.39.0 /opt/allure
+          sudo ln -s /opt/allure/bin/allure /usr/local/bin/allure
 
       # 第七步：执行 pytest 测试，生成 allure 原始结果（同时记录测试成功还是失败）
       - name: 执行测试生成Allure结果
@@ -57,7 +64,9 @@ jobs:
         run: |
           mkdir -p $ALLURE_RESULTS_DIR
           uv run pytest --alluredir=$ALLURE_RESULTS_DIR
-          echo "EXIT_CODE=$?" >> $GITHUB_OUTPUT
+          exit_code=$?
+          echo "EXIT_CODE=$exit_code" >> $GITHUB_OUTPUT
+          exit $exit_code
 
       # 第八步：把原始结果 → 生成可打开的网页报告
       - name: 生成Allure静态报告
@@ -69,7 +78,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: allure-report
+          name: allure-report-${{ github.run_id }}
           path: ${{ env.ALLURE_REPORT_DIR }}
 
       # 第十步：部署报告到 Github Pages
@@ -79,7 +88,8 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ${{ env.ALLURE_REPORT_DIR }}
-          destination_dir: allure-report   # 部署到子目录，访问地址: https://用户名.github.io/仓库名/allure-report/
+          destination_dir: allure-report/${{ github.run_id }}   # 部署到子目录，访问地址: https://用户名.github.io/仓库名/allure-report/
+          keep_files: true
 
       # 第十一步：自动发钉钉消息
       - name: 发送钉钉通知
@@ -94,7 +104,7 @@ jobs:
             STATUS="❌ 测试失败"
           fi
           
-          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure-report/"
+          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure-report/${{ github.run_id }}/"
           CONTENT=$'自动化测试完成\n分支：'"${{ github.ref_name }}"$'\nSHA：'"${{ github.sha }}"$'\n结果：'"$STATUS"$'\n报告：'"$REPORT_URL"
 
           JSON=$(jq -n --arg content "$CONTENT" '{msgtype: "text", text: {content: $content}}')
@@ -114,7 +124,7 @@ jobs:
             STATUS="❌ 测试失败"
           fi
           
-          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure-report/"
+          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure-report/${{ github.run_id }}/"
           CONTENT=$'自动化测试完成\n分支：'"${{ github.ref_name }}"$'\nSHA：'"${{ github.sha }}"$'\n结果：'"$STATUS"$'\n报告：'"$REPORT_URL"
           
           JSON=$(jq -n --arg content "$CONTENT" '{msgtype: "text", text: {content: $content}}')
@@ -126,7 +136,7 @@ jobs:
         if: always()
         uses: actions/download-artifact@v4
         with:
-          name: allure-report
+          name: allure-report-${{ github.run_id }}
           path: ${{ env.ALLURE_REPORT_DIR }}
 
       - name: 打包报告为 zip
@@ -152,6 +162,6 @@ jobs:
             <h3>自动化测试结果: ${{ steps.test.outputs.EXIT_CODE == '0' && '✅ 通过' || '❌ 失败' }}</h3>
             <p>分支: <strong>${{ github.ref_name }}</strong></p>
             <p>提交: <code>${{ github.sha }}</code></p>
-            <p>在线报告: <a href="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure-report/">点击查看</a></p>
+            <p>在线报告: <a href="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure-report/${{ github.run_id }}">点击查看</a></p>
             <p>详细报告见附件。</p>
           attachments: ${{ github.workspace }}/allure-report.zip

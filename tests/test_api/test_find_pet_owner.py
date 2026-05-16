@@ -8,6 +8,7 @@
 import os
 import json
 import requests
+from config.global_config import DATA_DIR
 
 # 1.断言状态码
 def test_find_pet_owner():
@@ -17,8 +18,7 @@ def test_find_pet_owner():
     assert response.status_code == 200
 
     result = response.json()
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    response_path = os.path.join(base_dir, 'data', 'response_json')
+    response_path = DATA_DIR / 'response_json'
     with open(response_path, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=4)
 

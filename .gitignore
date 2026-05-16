@@ -15,12 +15,15 @@ __pycache__/
 reports/allure-results/
 reports/allure-report/
 
+# 覆盖率报告
+.coverage
+
 # 测试报告
 *.html
-report/
 
 # 日志
 logs/
+*.log
 
 # 截图临时文件
 screenshots/
@@ -36,3 +39,7 @@ temp/
 # 系统
 .DS_Store
 Thumbs.db
+
+# 环境
+.env
+*.secret

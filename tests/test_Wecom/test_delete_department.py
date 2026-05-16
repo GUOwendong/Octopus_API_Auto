@@ -8,12 +8,12 @@
 import os
 import pytest
 import requests
-from config.token_manager import get_token
+from common.wecom_token import get_token
 from common.file_utils import FileUtil
-from config.global_config import base_dir
+from config.global_config import DATA_DIR
 token = get_token()
 
-dept_data = FileUtil.read_excel(os.path.join(base_dir, "data", "xlsx", "create_department.xlsx"))
+dept_data = FileUtil.read_excel("xlsx/create_department.xlsx")
 
 @pytest.mark.parametrize("deptid", dept_data, ids=lambda x: x["case_id"])
 def test_delete_department(deptid):

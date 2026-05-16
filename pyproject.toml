@@ -20,23 +20,16 @@ dependencies = [
     "requests>=2.34.1",
 ]
 
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-# =======================
-# Black（代码格式化）
-# =======================
 [tool.black]
 line-length = 120
 target-version = ["py314"]
 include = '\.pyi?$'
-exclude = '''/( \.git | \.venv | env | build | dist | .*_cache )/'''
+exclude = '/(\.git | \.venv | env | build | dist | \.pytest_cache | \.tox)/'
 
-# =======================
-# isort（import 排序）
-# =======================
 [tool.isort]
 profile = "black"
 line_length = 120
@@ -45,24 +38,13 @@ include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
 
-# =======================
-# Flake8（静态检查）
-# =======================
 [tool.flake8]
 max-line-length = 120
-extend-ignore = [
-    "E203",   # 与 Black 冲突
-    "W503",   # 运算符换行
-    "W504",
-    "F401",   # fixture / __init__ 常见
-]
-exclude = .git,.venv,env,build,dist,.pytest_cache,.tox
+extend-ignore = ["E203", "W503", "W504", "F401"]
+exclude = ".git,.venv,env,build,dist,.pytest_cache,.tox"
 
-# =======================
-# pytest（接口自动化核心）
-# =======================
 [tool.pytest.ini_options]
-addopts = "-ra -q --tb=short --strict-markers"
+addopts = "-ra -q --tb=short --strict-markers --alluredir=reports/allure-results"
 testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
@@ -72,3 +54,8 @@ markers = [
     "regression: regression test",
     "wecom: wecom interface test"
 ]
+
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["common", "config", "services"]

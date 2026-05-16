@@ -8,13 +8,12 @@ import os
 
 import pytest
 import requests
-from config.token_manager import get_token
+from common.wecom_token import get_token
 from common.file_utils import FileUtil
-from config.global_config import base_dir
+from config.global_config import DATA_DIR
 token = get_token()
 
-yaml_path = os.path.join(base_dir, "data", "yaml", "update_department.yaml")
-yaml_data = FileUtil.read_yaml(yaml_path, "utf-8")
+yaml_data = FileUtil.read_yaml("yaml/update_department.yaml")
 
 @pytest.mark.parametrize("dept", yaml_data, ids=lambda x: x["case_id"])
 def test_update_department(dept):
