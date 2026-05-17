@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""企业微信 AccessToken 管理器（单例，自动缓存）"""
+"""
+@Author: guowendong
+@Desc: 企业微信 AccessToken 管理器（单例，自动缓存）
+"""
+
 import time
 
 import requests
 
 from common.log_utils import log
-from common.wecom_error_code import extract_error_from_response, is_success
 from config.global_config import TIMEOUT, WECOM_CONFIG
+from integrations.wecom.wecom_error_code import extract_error_from_response, is_success
 
 
 class WeComTokenManager:

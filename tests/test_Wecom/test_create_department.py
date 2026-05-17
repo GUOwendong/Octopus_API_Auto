@@ -5,14 +5,11 @@
 @Desc: Conducting code practice and testing development work
 """
 
-import os
-
 import pytest
 import requests
 
 from common.file_utils import FileUtil
-from common.wecom_token import get_token
-from config.global_config import DATA_DIR
+from integrations.wecom.wecom_token import get_token
 
 token = get_token()
 

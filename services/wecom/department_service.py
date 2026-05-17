@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """企业微信部门服务封装"""
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-from common.api_client import ApiClient
 from common.log_utils import log
-from common.wecom_error_code import extract_error_from_response, is_success
-from common.wecom_token import get_token
+from integrations.wecom.api_client import ApiClient
+from integrations.wecom.wecom_error_code import extract_error_from_response, is_success
+from integrations.wecom.wecom_token import get_token
 
 
 class DepartmentService:
@@ -17,7 +17,7 @@ class DepartmentService:
     def _ensure_token(self):
         if self._token is None:
             self._token = get_token()
-            self.client.set_auth_token(self._token)
+            self.client.set_access_token(self._token)
 
     def _request(self, method: str, path: str, **kwargs) -> Dict[str, Any]:
         self._ensure_token()

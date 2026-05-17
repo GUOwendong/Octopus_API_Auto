@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""企业微信错误码映射"""
+"""
+@Author: guowendong
+@Desc: 企业微信错误码映射
+"""
+
 from enum import IntEnum
 from typing import Any, Dict, Optional
 
