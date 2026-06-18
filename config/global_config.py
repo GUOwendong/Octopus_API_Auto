@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""全局配置：路径、环境、API 地址、超时等"""
+"""全局配置：路径、环境、API 地址、超时等（与具体企业无关）"""
 import os
 from enum import Enum
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ==================== 项目路径 ====================
 # 取当前文件的绝对路径，.parent回退到上一级，回到项目根目录下
@@ -29,18 +33,11 @@ class Env(str, Enum):
 
 CURRENT_ENV = Env(os.getenv("TEST_ENV", "test"))
 
-# API 基础地址（按环境区分）
+# API 基础地址（按环境区分，通过环境变量覆盖，默认为本地地址）
 API_BASE_URL_MAP = {
-    Env.DEV: "http://127.0.0.1:8000",
-    Env.TEST: "https://qyapi.weixin.qq.com",
-    Env.PROD: "https://qyapi.weixin.qq.com",
+    Env.DEV: os.getenv("API_BASE_URL_DEV", "http://127.0.0.1:8000"),
+    Env.TEST: os.getenv("API_BASE_URL_TEST", "http://127.0.0.1:8000"),
+    Env.PROD: os.getenv("API_BASE_URL_PROD", "http://127.0.0.1:8000"),
 }
 API_BASE_URL = API_BASE_URL_MAP[CURRENT_ENV]
 TIMEOUT = int(os.getenv("API_TIMEOUT", "30"))
-
-# 企业微信配置（从环境变量读取，避免硬编码）
-WECOM_CONFIG = {
-    "corp_id": os.getenv("WECOM_CORP_ID", "your_corp_id"),
-    "contact_secret": os.getenv("WECOM_CONTACT_SECRET", "your_secret"),
-    "base_url": "https://qyapi.weixin.qq.com",
-}

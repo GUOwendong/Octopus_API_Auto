@@ -4,17 +4,9 @@
 @Author: guowendong
 @Desc: 企业微信部门业务测试，仅调用Service层
 """
+
 import allure
 import pytest
-
-from services.wecom.department_service import DepartmentService
-
-
-@pytest.fixture(scope="module")
-def dept_service():
-    """只注入业务Service，屏蔽底层集成层"""
-    service = DepartmentService()
-    yield service
 
 
 @allure.feature("部门管理")

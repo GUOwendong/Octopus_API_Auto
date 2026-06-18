@@ -1,6 +1,3 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-@Author: guowendong
-@Desc: Conducting code practice and testing development work
-"""
+"""服务层：各企业业务逻辑封装"""

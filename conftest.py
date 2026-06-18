@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-@Author: guowendong
-@Desc: pytest 全局配置：夹具、失败截图（根目录）
+"""pytest 全局配置：通用夹具、失败快照（与具体企业无关）
+
+各企业的 ApiClient / AuthProvider fixture 请在各自的 tests/<module>/conftest.py 中定义。
 """
 
 import pytest
 
 from common.log_utils import log
 from config.global_config import SCREENSHOTS_DIR
-from integrations.wecom.api_client import ApiClient
-from integrations.wecom.wecom_token import get_token
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -18,17 +16,6 @@ def pytest_runtest_makereport(item, call):
     outcome = yield
     rep = outcome.get_result()
     setattr(item, "rep_" + rep.when, rep)
-
-
-@pytest.fixture(scope="session")
-def api_client():
-    client = ApiClient()
-    token = get_token()
-    client.set_access_token(token)
-    log.info("✅ 全局 ApiClient 已初始化，Token 已注入")
-    yield client
-    client.close()
-    log.info("全局 ApiClient 已关闭")
 
 
 @pytest.fixture(autouse=True)
