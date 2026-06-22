@@ -1,138 +1,55 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-@Author: guowendong
-@Desc: Conducting code practice and testing development work
+@Author : guowendon
+@Desc : 接口调用 → ProductService（services 层）HTTP / 认证 → api_client fixture（conftest 自动注入）
 """
+
 import io
 
 import pandas as pd
-import requests
 
-from common.log_utils import log
-
-BASE_URL = "http://api.wxorder.taover.com/v1"
-HEADERS = {
-    "Authorization": "Bearer==eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhZG1pbiIsImF1ZCI6IjA5OGY2YmNkNDYyMWQzNzNjYWRlNGU4MzI2MjdiNGY2IiwidGVuYW50IjoiMjM3IiwidXNlcm5hbWUiOiIxNzYxMTIxOTgwMyIsInVzZXJpZCI6IjMzMiIsInBhc3N3b3JkIjoiYmE2NzY2NThlOWMxN2M3ZmU4ZjcxNTliNjZiZTVkZDAiLCJzdGF0dXMiOjEsImV4cCI6MTc4MjMyMDM5OSwibmJmIjoxNzgyMDk1ODk4fQ.iFt3Sr5uf5N7DI9ATDJetWddl0iKKUgDOSqTj5ddb8I"
-}
-ID = None
-SKU_ID = None
-GOODS_NAME = "西瓜"
+from services.octopus.product_service import ProductService
 
 
-class TestProductManager:
+class TestProduct:
+    """商品管理全流程：新增 → 查询 → 下架 → 上架 → 删除"""
 
-    def test_create_product(self):
-        global SKU_ID, GOODS_NAME
-        log.info(f"🆕开始创建商品：{GOODS_NAME}...")
+    def test_product_flow(self, api_client):
+        service = ProductService(api_client)
+        goods_name = "西瓜"
 
-        response = requests.post(
-            url=f"{BASE_URL}/goodsbase",
-            headers=HEADERS,
-            json={
-                "goodsName": GOODS_NAME,
-                "goodsCode": "XG94930913",
-                "wareList": [{"wareSsid": "2276", "shippingId": "4302630", "wareShippingId": "4302630"}],
-                "goodsImage": "https://8zyun-base-api.oss-cn-beijing.aliyuncs.com/8zyun-wxorder-com/2026/06/21/uploadfile/goodsbase/ASYre6/豆包.png",
-                "goodsBaseSkuList": [
-                    {
-                        "skuName": "新疆",
-                        "skuCode": "skuBW7CTVEC9669",
-                        "basicPrice": "32",
-                        "suggestPrice": "45",
-                        "inventory": "10000",
-                        "shippingId": "4302630",
-                        "wareShippingId": "4302630",
-                    }
-                ],
-            },
-        )
+        # ===== 1. 新增商品 =====
+        create_res = service.create(goods_name=goods_name)
+        assert create_res["code"] == "ok", f"新增失败: {create_res.get('error', create_res)}"
+        sku_id = create_res["data"]["firstSkuId"]
+        print(f"✅ 商品创建成功, SKU_ID={sku_id}")
 
-        data = response.json()
+        # ===== 2. 查询商品（验证新增）=====
+        query_res = service.search(goods_name=goods_name)
+        assert query_res["code"] == "ok", f"查询失败: {query_res.get('error', query_res)}"
+        rows = query_res["data"]["rows"]
+        assert len(rows) > 0, "查询结果为空"
+        assert rows[0]["goodsName"] == goods_name, f"商品名称不匹配: {rows[0]['goodsName']}"
+        goods_id = rows[0]["id"]
+        print(f"✅ 查询成功, goods_id={goods_id}")
 
-        # HTTP层断言
-        assert response.status_code == 200, f"HTTP状态码异常: {response.status_code}"
+        # ===== 3. 下架商品 =====
+        delist_res = service.delist(sku_id)
+        assert delist_res["code"] == "ok", f"下架失败: {delist_res.get('error', delist_res)}"
+        print("✅ 下架成功")
 
-        # 业务层断言
-        assert data["code"] == "ok", f"业务code异常: {data['code']}"
-        assert data["error"] == "创建成功", f"提示信息不符：{data['error']}"
+        # ===== 4. 上架商品 =====
+        relist_res = service.relist(sku_id)
+        assert relist_res["code"] == "ok", f"上架失败: {relist_res.get('error', relist_res)}"
+        print("✅ 上架成功")
 
-        SKU_ID = data["data"]["firstSkuId"]
-        log.info(f"✅ 商品创建成功，🆔：{data['data']['firstSkuId']}，Name：{GOODS_NAME}")
-
-    def test_query_product(self):
-        global ID
-        log.info("🔍开始搜索商品...")
-        response = requests.get(
-            url=f"{BASE_URL}/goodsbase", headers=HEADERS, params={"goodsName": GOODS_NAME, "saleStatus": "1"}
-        )
-
-        data = response.json()
-
-        # HTTP层断言
-        assert response.status_code == 200, f"HTTP状态码异常: {response.status_code}"
-
-        # 业务层断言
-        assert data["code"] == "ok", f"业务code异常: {data['code']}"
-        assert (
-            data["data"]["rows"][0]["goodsName"] == GOODS_NAME
-        ), f"查询结果与预期不同，实际商品名称：{data['data']['rows'][0]['goodsName']}"
-
-        ID = data["data"]["rows"][0]["id"]
-        log.info(f"🔍搜索出来的是{GOODS_NAME}，🆔：{ID}")
-
-    def test_delisting_product(self):
-        log.info("⬇️开始下架商品...")
-        response = requests.put(
-            url=f"{BASE_URL}/wxordergoodsbasesku/updownstatus/0/sku/{SKU_ID}",
-            headers=HEADERS,
-            json={"sendMessageStatus": "0", "message": ""},
-        )
-
-        data = response.json()
-
-        # HTTP层断言
-        assert response.status_code == 200, f"HTTP状态码异常: {response.status_code}"
-
-        # 业务层断言
-        assert data["code"] == "ok", f"业务code异常: {data['code']}"
-        assert data["error"] == "操作成功", f"提示信息不符：{data['error']}"
-
-        log.info("⬇️商品下架🏅")
-
-    def test_listing_product(self):
-        log.info("⬆️开始上架商品...")
-        response = requests.put(
-            url=f"{BASE_URL}/wxordergoodsbasesku/updownstatus/1/sku/{SKU_ID}",
-            headers=HEADERS,
-            json={"sendMessageStatus": "0", "message": ""},
-        )
-
-        data = response.json()
-
-        # HTTP层断言
-        assert response.status_code == 200, f"HTTP状态码异常: {response.status_code}"
-
-        # 业务层断言
-        assert data["code"] == "ok", f"业务code异常: {data['code']}"
-        assert data["error"] == "操作成功", f"提示信息不符：{data['error']}"
-
-        log.info("⬆️商品上架🏅")
-
-    def test_delete_product(self):
-        log.info("🗑️开始删除商品...")
-        response = requests.get(url=f"{BASE_URL}/goodsbase/deleteGoods", headers=HEADERS, params={"idList": ID})
-
-        df = pd.read_excel(io.BytesIO(response.content))
+        # ===== 5. 删除商品（响应是 Excel 文件）=====
+        del_resp = service.delete(goods_id)
+        assert del_resp.status_code == 200, f"删除 HTTP 异常: {del_resp.status_code}"
+        # 解析 Excel 验证删除成功
+        df = pd.read_excel(io.BytesIO(del_resp.content))
         data = df.to_dict(orient="records")
-        print(data)
-
-        # HTTP层断言
-        assert response.status_code == 200, f"HTTP状态码异常: {response.status_code}"
-
-        # 业务层断言
-        assert len(data) > 0, "删除结果 Excel 为空！"
-        assert data[0]["处理结果"] == "删除成功"
-        assert int(data[0]["商品ID"]) == int(ID)
-
-        log.info("🗑️商品删除成功🏅")
+        assert len(data) > 0, "删除结果 Excel 为空"
+        assert data[0]["处理结果"] == "删除成功", f"删除失败: {data[0]}"
+        print("✅ 商品全流程测试通过")

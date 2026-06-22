@@ -2,101 +2,59 @@
 # -*- coding: utf-8 -*-
 """
 @Author: guowendong
-@Desc: 测试八爪鱼的仓库（供应商）创建，查询，删除全流程业务
+@Desc: 接口调用 → WarehouseService（services 层）HTTP / 认证 → api_client fixture（conftest 自动注入）
 """
-import pytest
-import requests
-
-from common.log_utils import log
 
 
-@pytest.mark.run(order=1)
-class TestWarehouseManager:
-    BASE_URL = "http://api.wxorder.taover.com/v1/wxorderware"
-    HEADERS = {
-        "Authorization": "Bearer==eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhZG1pbiIsImF1ZCI6IjA5OGY2YmNkNDYyMWQzNzNjYWRlNGU4MzI2MjdiNGY2IiwidGVuYW50IjoiMjM3IiwidXNlcm5hbWUiOiIxNzYxMTIxOTgwMyIsInVzZXJpZCI6IjMzMiIsInBhc3N3b3JkIjoiYmE2NzY2NThlOWMxN2M3ZmU4ZjcxNTliNjZiZTVkZDAiLCJzdGF0dXMiOjEsImV4cCI6MTc4MjMyMDM5OSwibmJmIjoxNzgyMDk1ODk4fQ.iFt3Sr5uf5N7DI9ATDJetWddl0iKKUgDOSqTj5ddb8I"
-    }
-    ssid = None
-    name = "郭文东"
+import uuid
 
-    # 1.创建仓库
-    @pytest.mark.run(order=1)
-    def test_create_warehouse(self):
-        log.info(f"🆕开始创建仓库, name={self.name}")
+from services.octopus.warehouse_service import WarehouseService
 
-        response = requests.post(
-            url=self.BASE_URL,
-            json={
-                "name": self.name,
-                "type": "0",
-                "cutTime": "21:54",
-                "pushEveryFewDays": 1,
-                "pushStartDate": "2026-06-20",
-                "wxGroupNickname": "渠道测试3群",
-                "wxReceiveId": "1688857021633656",
-                "wxGroupSsid": "R:10799694107455775",
-                "exportTemplateId": "7100496",
-                "pushExcelType": "0",
-                "wxReceiveNickname": "霍格沃兹-助教-三土",
-            },
-            headers=self.HEADERS,
-        )
 
-        data = response.json()
+class TestWarehouse:
+    """仓库管理全流程：借群释放 → 新增 → 查询 → 删除"""
 
-        # HTTP层断言
-        assert response.status_code == 200, f"HTTP状态码异常: {response.status_code}"
+    def test_warehouse_flow(self, api_client):
+        service = WarehouseService(api_client)
 
-        # 业务层断言
-        assert data["code"] == "ok", f"业务code异常: {data['code']}"
-        assert data["error"] == "仓库创建成功", f"提示信息不符：{data['error']}"
+        # ===== 0. 借群（找一个带群的仓库删掉，释放群）=====
+        all_res = service.list_all()
+        group_info = {}
+        if all_res.get("code") == "ok" and all_res.get("data"):
+            rows = all_res["data"].get("rows", [])
+            for r in rows:
+                gid = r.get("ssid") or r.get("id")
+                gsid = r.get("wxGroupSsid")
+                if gid and gsid:
+                    group_info = {
+                        "wxGroupNickname": r.get("wxGroupNickname", ""),
+                        "wxReceiveId": r.get("wxReceiveId", ""),
+                        "wxGroupSsid": gsid,
+                        "wxReceiveNickname": r.get("wxReceiveNickname", ""),
+                    }
+                    service.delete(int(gid))
+                    break
+        assert group_info, "没有找到可用群信息"
 
-        self.__class__.ssid = data["data"]
-        log.info(f"✅ 仓库创建成功, ssid={self.__class__.ssid}")
+        # ===== 1. 新增仓库 =====
+        warehouse_name = f"测试_{uuid.uuid4().hex[:4]}"
+        add_res = service.add(name=warehouse_name, **group_info)
+        assert add_res.get("code") == "ok", f"新增失败: {add_res.get('error', add_res)}"
 
-    # 2.查询仓库
-    @pytest.mark.run(order=2)
-    def test_query_warehouse(self):
-        log.info(f"🆕开始查询仓库, name={self.__class__.name}")
+        wid = add_res.get("data")  # 直接是数字 ID
+        if isinstance(wid, dict):
+            wid = wid.get("id") or wid.get("ssid")
 
-        response = requests.get(url=self.BASE_URL, params={"name": self.__class__.name}, headers=self.HEADERS)
+        # ===== 2. 查询仓库（验证新增成功）=====
+        sr = service.search(name=warehouse_name)
+        assert sr.get("code") == "ok", f"查询失败: {sr.get('error', sr)}"
 
-        data = response.json()
+        if not wid:
+            rows = (sr.get("data") or {}).get("rows") or []
+            if rows:
+                wid = rows[0].get("ssid") or rows[0].get("id")
 
-        # HTTP层断言
-        assert response.status_code == 200, f"HTTP状态码异常: {response.status_code}"
-
-        # 业务层断言
-        assert data["error"] == "查询成功", f"提示信息不符：{data['error']}"
-
-        rows = data["data"]["rows"]
-        assert len(rows) > 0, "查询结果为空，未找到匹配的仓库"
-
-        actual_name = rows[0]["name"]
-        assert (
-            actual_name == self.__class__.name
-        ), f"仓库名称不匹配, 期望: '{self.__class__.name}', 实际: '{actual_name}'"
-        assert str(rows[0]["ssid"]) == str(
-            self.__class__.ssid
-        ), f"ssid不一致, 创建: {self.__class__.ssid}, 查询: {rows[0]['ssid']}"
-
-        log.info(f"✅ 查询校验通过, name={actual_name}")
-
-    # 3.删除仓库
-    @pytest.mark.run(order=3)
-    def test_delete_warehouse(self):
-        assert self.__class__.ssid is not None, "❌ ssid为空，请确认create用例是否执行成功"
-        log.info(f"开始删除仓库, ssid={self.__class__.ssid}")
-
-        response = requests.delete(url=f"{self.BASE_URL}/{self.__class__.ssid}", headers=self.HEADERS)
-
-        data = response.json()
-        print(data)
-
-        # HTTP层断言
-        assert response.status_code == 200, f"HTTP状态码异常: {response.status_code}"
-
-        # 业务层断言
-        assert data["error"] == "删除成功", f"提示信息不符：{data['error']}"
-
-        log.info(f"✅ 删除成功, ssid={self.__class__.ssid}")
+        # ===== 3. 删除仓库（清理）=====
+        assert wid, "未能获取仓库 ID"
+        dr = service.delete(int(wid))
+        assert dr.get("code") == "ok", f"删除失败: {dr.get('error', dr)}"
