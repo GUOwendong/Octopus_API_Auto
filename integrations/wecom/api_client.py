@@ -4,7 +4,6 @@
 @Author: guowendong
 @Desc: 企业微信 API 客户端，继承 base_api_client 基类，仅保留企业微信业务逻辑
 """
-
 from typing import Any, Dict, Optional
 
 from base.base_api_client import BaseApiClient, BaseApiClientError

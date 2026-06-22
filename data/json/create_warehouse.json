@@ -1,0 +1,15 @@
+{
+    "name": "Midea warehouse-1",
+	"pushEveryFewDays": "2",
+	"pushStartDate": "2026-06-18",
+	"cutTime": "20:17",
+	"wxGroupNickname": "渠道试用测试",
+	"wxReceiveId": "1688856904663390",
+	"wxGroupSsid": "R:10764776470868705",
+	"wxReceiveNicknameArr": ["霍格沃兹-学委-夏天"],
+	"wxReceiveIdArr": ["1688856904663390"],
+	"exportTemplateId": "7100496",
+	"cutTimeArr": ["20:17"],
+	"wxReceiveNickname": "霍格沃兹-学委-夏天",
+	"actionFrom": 1
+}

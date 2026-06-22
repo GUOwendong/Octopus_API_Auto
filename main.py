@@ -4,7 +4,6 @@
 @Author: guowendong
 @Desc: 测试执行入口，支持环境切换
 """
-
 import argparse
 import os
 import subprocess
