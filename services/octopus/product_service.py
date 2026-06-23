@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-商品管理 Service
+@Author: guowendong
+@Desc：商品管理 Service
 =================
 职责：封装商品的新增、查询、上架、下架、删除接口调用。
-对照你原来的 test_product_flow.py，把每个接口调用变成一个方法。
 
 接口速查：
   新增商品  POST   /v1/goodsbase                              body: JSON
@@ -13,7 +13,6 @@
   上架商品  PUT    /v1/wxordergoodsbasesku/updownstatus/1/sku/{skuId}
   删除商品  GET    /v1/goodsbase/deleteGoods?idList=xxx       返回: Excel 文件
 """
-
 from typing import Any, Dict
 
 import requests
