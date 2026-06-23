@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-@Author: guowendong
-@Desc：商品管理 Service
+商品管理 Service
 =================
 职责：封装商品的新增、查询、上架、下架、删除接口调用。
+对照你原来的 test_product_flow.py，把每个接口调用变成一个方法。
 
 接口速查：
   新增商品  POST   /v1/goodsbase                              body: JSON
@@ -13,7 +13,8 @@
   上架商品  PUT    /v1/wxordergoodsbasesku/updownstatus/1/sku/{skuId}
   删除商品  GET    /v1/goodsbase/deleteGoods?idList=xxx       返回: Excel 文件
 """
-from typing import Any, Dict
+
+from typing import Any, Dict, Optional
 
 import requests
 
@@ -54,7 +55,7 @@ class ProductService:
         }
         body.update(kwargs)
 
-        log.info(f"🆕新增商品: {goods_name}")
+        log.info(f"新增商品: {goods_name}")
         resp = self.client.post("/v1/goodsbase", json=body)
         return resp.json()
 
@@ -66,7 +67,7 @@ class ProductService:
         :param sale_status: 销售状态（1=在售）
         :return: {'code':'ok', 'data': {'rows': [...]}}
         """
-        log.info(f"🔍查询商品: {goods_name}")
+        log.info(f"查询商品: {goods_name}")
         resp = self.client.get("/v1/goodsbase", params={"goodsName": goods_name, "saleStatus": sale_status})
         return resp.json()
 
@@ -76,7 +77,7 @@ class ProductService:
         下架商品（updownstatus=0）
         :param sku_id: SKU ID
         """
-        log.info(f"⬇️下架商品 SKU: {sku_id}")
+        log.info(f"下架商品 SKU: {sku_id}")
         resp = self.client.put(
             f"/v1/wxordergoodsbasesku/updownstatus/0/sku/{sku_id}",
             json={"sendMessageStatus": "0", "message": ""},
@@ -89,7 +90,7 @@ class ProductService:
         上架商品（updownstatus=1）
         :param sku_id: SKU ID
         """
-        log.info(f"⬆️上架商品 SKU: {sku_id}")
+        log.info(f"上架商品 SKU: {sku_id}")
         resp = self.client.put(
             f"/v1/wxordergoodsbasesku/updownstatus/1/sku/{sku_id}",
             json={"sendMessageStatus": "0", "message": ""},
@@ -103,6 +104,6 @@ class ProductService:
         :param goods_id: 商品 ID
         :return: requests.Response（调用方自行解析 Excel）
         """
-        log.info(f"🗑️删除商品 ID: {goods_id}")
+        log.info(f"删除商品 ID: {goods_id}")
         resp = self.client.get("/v1/goodsbase/deleteGoods", params={"idList": goods_id})
         return resp  # 不调 .json()，因为是 Excel 流

@@ -5,14 +5,12 @@
 @Desc: 渠道管理 Service
 =================
 职责：封装渠道的新增、查询、删除接口调用。
-测试用例只管调用这些方法，不关心底层 URL 和 HTTP 细节。
 
 接口说明：
 - 新增渠道  POST   /v1/wxorderchannel             body:  JSON
 - 查询渠道  GET    /v1/wxorderchannel?name=xxx
 - 删除渠道  DELETE   /v1/wxorderchannel/{id}
 """
-
 from typing import Any, Dict
 
 from common.log_utils import log
@@ -23,6 +21,7 @@ class ChannelService:
     """渠道管理业务层"""
 
     def __init__(self, client: OctopusClient):
+        """client 由 conftest 的 api_client fixture 自动注入"""
         self.client = client
 
     # ========================= 新增渠道 ========================
@@ -36,7 +35,7 @@ class ChannelService:
         # 构建请求体（必须通过 kwargs 传入）
         # 至少需要传：manager，managerNickname，wxGroupNickname，wxReceiveNickname
         body = {
-            "name": "踏雪寻梅1",
+            "name": name,
             "manager": "S:1688851806310976_1688857021633656",
             "managerNickname": "王田甜",
             "wxGroupNickname": "钱老师-大课",
@@ -70,6 +69,6 @@ class ChannelService:
         :return: 服务器返回的 JSON 字典
         """
         log.info(f"🗑️删除渠道 ID：{channel_id}")
-        resp = self.client.delete("/v1/wxorderchannel/{channel_id}")
+        resp = self.client.delete(f"/v1/wxorderchannel/{channel_id}")
         log.info(f"✅删除渠道响应：{resp.status_code}")
         return resp.json()

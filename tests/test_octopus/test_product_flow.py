@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-@Author : guowendon
-@Desc : 接口调用 → ProductService（services 层）HTTP / 认证 → api_client fixture（conftest 自动注入）
+商品管理测试用例 — framework 风格
+===================================
+接口调用 → ProductService（services 层）
+HTTP / 认证 → api_client fixture（conftest 自动注入）
+
+对照你原来的写法：
+  旧: requests.post(url, headers=HEADERS, json={...})
+  新: service.create(goods_name="西瓜")
 """
 
 import io
@@ -16,6 +22,14 @@ class TestProduct:
     """商品管理全流程：新增 → 查询 → 下架 → 上架 → 删除"""
 
     def test_product_flow(self, api_client):
+        """
+        流程说明：
+        1. 新增商品 → 拿到 SKU_ID
+        2. 查询商品 → 验证新增成功，拿到商品 ID
+        3. 下架商品
+        4. 上架商品
+        5. 删除商品（返回 Excel，解析验证）
+        """
         service = ProductService(api_client)
         goods_name = "西瓜"
 

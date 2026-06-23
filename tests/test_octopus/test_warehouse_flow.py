@@ -4,8 +4,6 @@
 @Author: guowendong
 @Desc: 接口调用 → WarehouseService（services 层）HTTP / 认证 → api_client fixture（conftest 自动注入）
 """
-
-
 import uuid
 
 from services.octopus.warehouse_service import WarehouseService

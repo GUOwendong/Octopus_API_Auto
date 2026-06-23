@@ -59,11 +59,11 @@ def api_client():
     client.set_token(token)
 
     # 5. 日志记录
-    log.info("🚀 Octopus ApiClient 已初始化")
+    log.info("✅ Octopus ApiClient 已初始化")
 
     # yield：把 client 交给测试用例使用
     yield client
 
     # 所有测试用例执行完毕后，关闭客户端（释放 HTTP 连接）
     client.close()
-    log.info("🔚 Octopus ApiClient 已关闭")
+    log.info("Octopus ApiClient 已关闭")
