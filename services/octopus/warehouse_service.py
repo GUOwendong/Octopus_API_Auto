@@ -64,13 +64,14 @@ class WarehouseService:
         return resp.json()
 
     # ======================== 查询所有仓库 ========================
-    def list_all(self) -> Dict[str, Any]:
+    def list_all(self, size: int = 100) -> Dict[str, Any]:
         """
-        查询所有仓库（不带 name 参数 = 全量查询）
+        查询所有仓库（带分页参数，size 增大避免漏掉后面页的数据）
+        :param size: 每页数量，默认 100（足够覆盖大部分场景）
         :return: 服务器返回的 JSON 字典
         """
-        log.info("🔍查询所有仓库")
-        resp = self.client.get("/v1/wxorderware")
+        log.info(f"🔍查询所有仓库 (size={size})")
+        resp = self.client.get("/v1/wxorderware", params={"size": size})
         log.info(f"✅查询所有仓库响应: {resp.status_code}")
         return resp.json()
 

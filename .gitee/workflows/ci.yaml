@@ -10,7 +10,7 @@ on:
 
 jobs:
   test:
-    runs-on: python-3.12
+    runs-on: python-3.13
     steps:
       - checkout: self
 
@@ -29,6 +29,8 @@ jobs:
         env:
           WECOM_CORP_ID: ${{ secrets.WECOM_CORP_ID }}
           WECOM_CONTACT_SECRET: ${{ secrets.WECOM_CONTACT_SECRET }}
+          OCTOPUS_BASE_URL: http://api.wxorder.taover.com
+          OCTOPUS_TOKEN: ${{ secrets.OCTOPUS_TOKEN }}
 
       - name: 归档 Allure 结果
         if: always()

@@ -8,9 +8,10 @@
 
 - **多企业即插即用** — 可插拔的 `AuthProvider` + `ApiClient`，换企业不需要改框架代码。
 - **分层架构** — `base`（HTTP 客户端）→ `integrations`（认证 + API 客户端）→ `services`（业务逻辑）→ `tests`（测试用例）。
-- **数据驱动** — 支持 JSON / YAML / Excel 测试数据，原生集成 `pytest.mark.parametrize`。
+- **数据驱动** — 支持 JSON / YAML / Excel 测试数据；`pytest.mark.parametrize` 集成。
+- **随机数据生成** — `generate_orders.py` 每次生成唯一测试数据，避免重复冲突。
 - **Allure 报告** — 内建 Allure 集成，自动生成 HTML 测试报告。
-- **CI/CD 就绪** — 预配置 GitHub Actions、GitLab CI、Gitee 流水线。
+- **CI/CD 就绪** — 预配置 GitHub Actions、GitLab CI、Gitee 流水线（含钉钉/企微/邮件通知）。
 - **代码质量** — 开箱即用的 `black` + `isort` + `pre-commit`。
 - **失败快照** — 测试失败自动保存上下文快照，快速定位问题。
 
@@ -24,7 +25,7 @@
 | requests | >= 2.34 |
 | Allure | >= 2.16 (pytest 插件) |
 | loguru | >= 0.7 |
-| openpyxl / pandas | Excel 数据读写 |
+| pandas / openpyxl | Excel 数据读写 |
 | PyYAML | YAML 数据读写 |
 
 ## 快速开始
@@ -54,134 +55,135 @@ uv run pre-commit install
 
 ### 3. 配置环境变量
 
-```bash
-# 复制模板并填入实际值
-cp .env.example .env
-```
-
-编辑 `.env`：
+在项目根目录创建 `.env` 文件：
 
 ```env
-# 环境选择：dev / test / prod
+# =================== 八爪鱼系统 ===================
+OCTOPUS_BASE_URL=http://api.wxorder.taover.com
+OCTOPUS_TOKEN=<从浏览器F12抓取的JWT Token>
+
+# =================== 通用配置 ===================
 TEST_ENV=test
-
-# 各环境 API 基础地址
-API_BASE_URL_DEV=http://127.0.0.1:8000
-API_BASE_URL_TEST=http://127.0.0.1:8000
-API_BASE_URL_PROD=http://127.0.0.1:8000
-
-# HTTP 请求超时（秒）
 API_TIMEOUT=30
-
-# 企业特有凭据（示例：企业微信）
-WECOM_BASE_URL=https://qyapi.weixin.qq.com
-WECOM_CORP_ID=你的企业ID
-WECOM_CONTACT_SECRET=你的应用Secret
 ```
+
+> `OCTOPUS_TOKEN` 从浏览器 F12 → Network → 任一请求 → Request Headers → `Authorization: Bearer==xxx` 复制 `xxx` 部分。
 
 ### 4. 运行测试
 
 ```bash
-# 运行全部测试
-uv run pytest
+# 运行全部八爪鱼测试
+uv run pytest tests/test_octopus/ -v -s
 
-# 指定环境运行
-uv run python main.py -e test
+# 运行单个模块
+uv run pytest tests/test_octopus/test_warehouse_flow.py -v -s     # 仓库管理
+uv run pytest tests/test_octopus/test_product_flow.py -v -s       # 商品管理
+uv run pytest tests/test_octopus/test_channel_flow.py -v -s       # 渠道管理
+uv run pytest tests/test_octopus/test_order_flow.py -v -s         # 订单管理
 
-# 按标记运行
-uv run pytest -m smoke
+# 连通性测试（验证 token 是否有效）
+uv run pytest tests/test_octopus/test_health.py -v -s
 
-# 运行单个测试文件
-uv run pytest tests/test_Wecom/test_create_department.py -v
-```
-
-### 5. 查看报告
-
-```bash
-# 一键运行 + 生成报告
-uv run python main.py -e test
-
-# 打开 Allure 报告
+# 运行并生成 Allure 报告
+uv run pytest --alluredir=reports/allure-results
+allure generate reports/allure-results -o reports/allure-report --clean
 allure open reports/allure-report
 ```
 
-或启动本地静态服务器：
+### 5. 一键运行 + 报告
 
 ```bash
-cd reports/allure-report && python -m http.server 8080
+uv run python main.py -e test
 ```
 
 ## 项目结构
 
 ```
-.
-├── base/                        # 框架核心（零业务逻辑）
-│   └── base_api_client.py       #   通用 HTTP 客户端基类
-├── common/                      # 通用工具
-│   ├── file_utils.py            #   Excel / JSON / YAML 读写
-│   └── log_utils.py             #   基于 loguru 的日志配置
+Octopus_API_Auto/
+│
+├── base/                              # 框架核心（零业务逻辑）
+│   └── base_api_client.py             #   通用 HTTP 客户端基类
+│
+├── common/                            # 通用工具
+│   ├── log_utils.py                   #   基于 loguru 的日志配置
+│   ├── file_utils.py                  #   Excel / JSON / YAML 读写
+│   └── generate_orders.py             #   随机生成订单 Excel 数据 ★
+│
 ├── config/
-│   └── global_config.py         #   路径、环境、API 地址（环境变量驱动）
-├── integrations/                # 外部系统集成
-│   ├── auth_provider.py         #   AuthProvider 抽象基类 + StaticTokenAuth
-│   └── wecom/                   #   企业微信集成（示例）
-│       ├── api_client.py        #     企业微信专用 HTTP 客户端
-│       ├── wecom_token.py       #     Token 管理器（实现 AuthProvider）
-│       └── wecom_error_code.py  #     错误码映射
-├── services/                    # 业务服务层
-│   └── wecom/
-│       └── department_service.py #   企业微信部门 CRUD
-├── tests/                       # 测试用例
-│   └── test_Wecom/
-│       ├── conftest.py          #   企业微信夹具（api_client, dept_service）
-│       ├── test_create_department.py
-│       ├── test_update_department.py
-│       ├── test_delete_department.py
-│       └── test_depart_manager.py
-├── data/                        # 测试数据
-│   ├── xlsx/                    #   Excel 测试数据
-│   └── yaml/                    #   YAML 测试数据
-├── .env.example                 # 环境变量模板
-├── conftest.py                  # 全局 pytest 夹具（框架级别）
-├── main.py                      # CLI 入口（环境切换 + Allure 报告）
-├── pyproject.toml               # 项目配置与依赖
-└── uv.lock                      # 锁定依赖版本
+│   └── global_config.py               #   路径、环境、API 地址（环境变量驱动）
+│
+├── integrations/                      # 外部系统集成层（接入一次，不再改动）
+│   ├── auth_provider.py               #   AuthProvider 抽象基类 + StaticTokenAuth
+│   └── octopus/                       #   八爪鱼系统集成
+│       ├── __init__.py                #     接入新企业的标准流程文档
+│       ├── auth.py                    #     从 .env 读 OCTOPUS_TOKEN
+│       ├── api_client.py              #     HTTP 客户端（Bearer== 格式）
+│       └── error_code.py              #     错误码映射（待补充）
+│
+├── services/octopus/                  # 业务服务层 ★
+│   ├── warehouse_service.py           #   仓库管理：新增 / 查询 / 列表 / 删除
+│   ├── product_service.py             #   商品管理：新增 / 查询 / 下架 / 上架 / 删除
+│   ├── channel_service.py             #   渠道管理：新增 / 查询 / 删除
+│   └── order_service.py               #   订单管理：导入Excel / 匹配表头 / 关联 / 查询 / 改金额
+│
+├── tests/test_octopus/                # 测试用例 ★
+│   ├── conftest.py                    #   api_client fixture（session级别，自动注入）
+│   ├── test_health.py                 #   连通性测试
+│   ├── test_warehouse_flow.py         #   仓库全流程：借群 → 新增 → 查询 → 删除
+│   ├── test_product_flow.py           #   商品全流程：新增 → 查询 → 下架 → 上架 → 删除
+│   ├── test_channel_flow.py           #   渠道全流程：新增 → 查询 → 删除
+│   └── test_order_flow.py             #   订单全流程：导入 → 匹配 → 关联 → 查询 → 改金额
+│
+├── data/                              # 测试数据
+│   ├── json/
+│   ├── xlsx/
+│   └── yaml/
+│
+├── conftest.py                        # 全局夹具（失败自动截图）
+├── main.py                            # CLI 入口（环境切换 + Allure）
+├── pyproject.toml                     # 项目配置与依赖
+└── uv.lock                            # 锁定依赖版本
 ```
 
 ## 架构设计
 
+### 三层分工
+
 ```
-┌──────────────────────────────────────────────────┐
-│                    tests/                         │
-│   conftest.py → api_client fixture                │
-│   （每个企业、每个模块独立定义）                      │
-└────────────────────┬─────────────────────────────┘
-                     │ 依赖
-┌────────────────────▼─────────────────────────────┐
-│                  services/                        │
-│   业务逻辑，调用 integrations.ApiClient             │
-└────────────────────┬─────────────────────────────┘
-                     │ 依赖
-┌────────────────────▼─────────────────────────────┐
-│               integrations/                       │
-│   ├── auth_provider.py    (AuthProvider 抽象)      │
-│   └── <企业名称>/                                  │
-│       ├── api_client.py   (继承 BaseApiClient)     │
-│       ├── auth.py         (继承 AuthProvider)      │
-│       └── error_code.py                           │
-└────────────────────┬─────────────────────────────┘
-                     │ 依赖
-┌────────────────────▼─────────────────────────────┐
-│                   base/                           │
-│   base_api_client.py  （纯 HTTP，无任何业务）       │
-└──────────────────────────────────────────────────┘
+测试层 (tests)        →  只管"这个接口通了没有"
+                        service.add() / service.search() / service.delete()
+
+业务层 (services)     →  只管"URL 是什么 / 方法是什么 / 传什么参数"
+                        self.client.post("/v1/xxx", json={...})
+
+集成层 (integrations) →  只管"Token 怎么带 / Base URL 是什么"
+                        "Authorization", "Bearer==xxx"
+```
+
+### 数据流
+
+```
+test_warehouse_flow.py              # 测试用例
+  │  service = WarehouseService(api_client)
+  │  service.add(name="测试仓库", **group_info)
+  ▼
+warehouse_service.py                # 业务层
+  │  self.client.post("/v1/wxorderware", json=body)
+  ▼
+api_client.py                       # 集成层
+  │  self.set_header("Authorization", f"Bearer=={token}")
+  ▼
+base_api_client.py                  # 框架层
+  │  self.session.request("POST", base_url + path, ...)
+  ▼
+api.wxorder.taover.com              # 服务器
 ```
 
 ### 核心设计原则
 
 1. **根 `conftest.py` 与企业无关** — 只包含框架级别的夹具（如失败快照）。
 2. **每个企业独立管理自己的 `api_client` fixture** — 在 `tests/<企业>/conftest.py` 中定义。
-3. **认证是可插拔接口** — `AuthProvider` 抽象基类；企业微信的 `WeComTokenManager` 只是其中一个实现。
+3. **认证是可插拔接口** — `AuthProvider` 抽象基类；八爪鱼的 `OctopusAuth` 只是其中一个实现。
 4. **所有配置通过环境变量** — 零硬编码的 URL 和凭据。
 
 ## 接入新企业
@@ -206,7 +208,6 @@ from integrations.auth_provider import AuthProvider
 
 class AliCloudAuth(AuthProvider):
     def get_token(self, force_refresh=False):
-        # 在这里实现你的认证逻辑
         return os.getenv("ALICLOUD_ACCESS_TOKEN", "")
 
     def is_valid(self):
@@ -261,10 +262,6 @@ def api_client():
     client.set_access_token(auth.get_token())
     yield client
     client.close()
-
-@pytest.fixture(scope="session")
-def ecs_service(api_client):
-    return ECSService(client=api_client)
 ```
 
 ### 第四步：在 `.env` 中添加凭据
@@ -276,69 +273,75 @@ ALICLOUD_ACCESS_TOKEN=你的token
 
 **框架文件（`base/`、`common/`、`config/`、根 `conftest.py`）无需任何修改。**
 
-## 按标记运行
+## 照猫画虎：新增一个模块
 
-```bash
-# 仅冒烟测试
-uv run pytest -m smoke
+以"渠道管理"为例，每个模块只需要 2 个文件：
 
-# 回归测试
-uv run pytest -m regression
+**1. `services/octopus/channel_service.py`（接口封装）：**
 
-# 某个企业的测试
-uv run pytest -m wecom
+```python
+class ChannelService:
+    def __init__(self, client):
+        self.client = client
 
-# 组合标记
-uv run pytest -m "smoke and wecom"
+    def add(self, name, **kwargs):
+        resp = self.client.post("/v1/wxorderchannel", json={"name": name, **kwargs})
+        return resp.json()
+
+    def search(self, name):
+        resp = self.client.get("/v1/wxorderchannel", params={"name": name})
+        return resp.json()
+
+    def delete(self, channel_id):
+        resp = self.client.delete(f"/v1/wxorderchannel/{channel_id}")
+        return resp.json()
 ```
 
-## 只运行失败的用例
+**2. `tests/test_octopus/test_channel_flow.py`（测试用例）：**
 
-```bash
-uv run pytest --lf       # 仅上次失败的
-uv run pytest --ff       # 先跑失败的，再跑其余的
-```
+```python
+from services.octopus.channel_service import ChannelService
 
-## 失败重跑
+class TestChannel:
+    def test_channel_flow(self, api_client):
+        service = ChannelService(api_client)
 
-```bash
-uv run pytest --reruns 2 --reruns-delay 1
+        add_res = service.add(name="测试渠道")
+        assert add_res.get("code") == "ok"
+
+        search_res = service.search(name="测试渠道")
+        assert search_res.get("code") == "ok"
+
+        channel_id = search_res["data"]["rows"][0]["id"]
+        del_res = service.delete(channel_id)
+        assert del_res.get("code") == "ok"
 ```
 
 ## CI/CD
 
 ### GitHub Actions
 
-推送到 `main` 分支或创建 PR 时自动触发。流水线步骤：
-1. 安装 uv + 项目依赖
-2. 执行 pytest 生成 Allure 原始数据
-3. 生成 Allure HTML 报告
-4. 上传报告 artifact
-5. 部署到 GitHub Pages
-6. 发送通知（钉钉 / 企业微信 / 邮件）
-
-需要在 GitHub 仓库 `Settings → Secrets` 中配置：
+需要在 GitHub 仓库 `Settings → Secrets and variables → Actions` 中配置：
 
 | Secret | 说明 |
 |--------|------|
+| `OCTOPUS_TOKEN` | 八爪鱼 JWT Token（必填） |
 | `WECOM_CORP_ID` | 企业微信 Corp ID |
 | `WECOM_CONTACT_SECRET` | 企业微信通讯录 Secret |
 | `DING_WEBHOOK` | 钉钉机器人 Webhook |
 | `WECOM_WEBHOOK` | 企业微信机器人 Webhook |
-| `MAIL_USERNAME` | SMTP 发件邮箱 |
-| `MAIL_PASSWORD` | SMTP 邮箱密码/授权码 |
-| `MAIL_TO` | 收件邮箱 |
 
 ### GitLab CI
 
-`.gitlab-ci.yaml` 已预配置。在 GitLab 项目 `Settings → CI/CD → Variables` 中添加：
+在 GitLab 项目 `Settings → CI/CD → Variables` 中添加：
 
+- `OCTOPUS_TOKEN`
 - `WECOM_CORP_ID`
 - `WECOM_CONTACT_SECRET`
 
 ### Gitee
 
-`.gitee/workflows/ci.yaml` 已预配置。
+在项目设置 → 密钥管理中添加 `OCTOPUS_TOKEN` 等。
 
 ## 代码质量
 
@@ -349,40 +352,26 @@ uv run pre-commit run --all-files
 # 代码格式化
 uv run black .
 uv run isort .
-
-# 代码检查
-uv run flake8 .
 ```
 
 ## 常见问题
+
+### Q: 运行测试提示 `not_authorized`？
+
+token 过期了。打开浏览器 F12 → 复制新的 `Authorization: Bearer==xxx` 值 → 更新 `.env` 中的 `OCTOPUS_TOKEN`。
+
+### Q: 仓库测试报 `该群已被仓库使用`？
+
+一个微信群只能绑定一个仓库。`test_warehouse_flow.py` 采用了"借群"策略：先查所有仓库，找一个带群的删掉释放群资源，再用这个群创建测试仓库。
+
+### Q: 订单测试报 `该Excel文件正处于其他操作流程中`？
+
+订单是异步生成的，上一次测试的 Excel 文件还在后台处理。等几分钟再跑，或者换个收货人姓名。
 
 ### Q: 如何添加新的依赖包？
 
 ```bash
 uv add <包名>
-```
-
-这会同时更新 `pyproject.toml` 和 `uv.lock`。
-
-### Q: 如何更换 Python 版本？
-
-修改 `pyproject.toml` 中的 `requires-python`，然后运行：
-
-```bash
-uv sync
-```
-
-### Q: 提示 allure 命令找不到？
-
-```bash
-# macOS
-brew install allure
-
-# Linux（手动安装）
-wget -qO allure.tgz https://github.com/allure-framework/allure2/releases/download/2.39.0/allure-2.39.0.tgz
-tar -zxf allure.tgz
-sudo mv allure-2.39.0 /opt/allure
-sudo ln -s /opt/allure/bin/allure /usr/local/bin/allure
 ```
 
 ### Q: 如何并行执行测试？
@@ -392,10 +381,4 @@ uv add pytest-xdist
 uv run pytest -n auto
 ```
 
-### Q: 框架支持 gRPC / WebSocket 吗？
-
-目前不支持 — 本框架定位为 RESTful HTTP API 自动化。如需其他协议，可在 `base_api_client.py` 基础上扩展。
-
 ## License
-
-Internal use.

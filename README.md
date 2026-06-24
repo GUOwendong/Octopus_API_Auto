@@ -1,18 +1,19 @@
 # Interface Automation Framework
 
-A lightweight, extensible, multi-enterprise API automation framework. Clone, configure, and run — zero adaptation to your own business.
+A lightweight, extensible, multi-enterprise API automation framework. Clone, configure, and run — zero adaptation needed for your own business.
 
 [中文文档](README_zh.md)
 
 ## Features
 
-- **Multi-Enterprise Ready** — Pluggable `AuthProvider` and `ApiClient`; no framework code changes needed when switching enterprises.
+- **Multi-Enterprise Ready** — Pluggable `AuthProvider` and `ApiClient`; no framework code changes when switching enterprises.
 - **Layered Architecture** — `base` (HTTP client) → `integrations` (auth + API client) → `services` (business logic) → `tests` (test cases).
 - **Data-Driven** — Supports JSON / YAML / Excel test data; `pytest.mark.parametrize` integration.
-- **Allure Reports** — Built-in Allure integration with automatic report generation.
-- **CI/CD** — Pre-configured pipelines for GitHub Actions, GitLab CI, and Gitee.
+- **Random Data Generation** — `generate_orders.py` creates unique test data per run, avoiding conflicts.
+- **Allure Reports** — Built-in Allure integration with automatic HTML report generation.
+- **CI/CD Ready** — Pre-configured pipelines for GitHub Actions, GitLab CI, and Gitee (with DingTalk/WeCom/email notifications).
 - **Code Quality** — `black` + `isort` + `pre-commit` hooks out of the box.
-- **Failure Snapshots** — Automatic snapshot saved when a test fails, for fast triage.
+- **Failure Snapshots** — Automatic context snapshot saved when a test fails, for fast triage.
 
 ## Tech Stack
 
@@ -24,7 +25,7 @@ A lightweight, extensible, multi-enterprise API automation framework. Clone, con
 | requests | >= 2.34 |
 | Allure | >= 2.16 (pytest plugin) |
 | loguru | >= 0.7 |
-| openpyxl / pandas | for Excel data |
+| pandas / openpyxl | for Excel data |
 | PyYAML | for YAML data |
 
 ## Quick Start
@@ -54,134 +55,135 @@ uv run pre-commit install
 
 ### 3. Configuration
 
-```bash
-# Copy the template and fill in your values
-cp .env.example .env
-```
-
-Edit `.env`:
+Create a `.env` file in the project root:
 
 ```env
-# Environment: dev / test / prod
+# =================== Octopus System ===================
+OCTOPUS_BASE_URL=http://api.wxorder.taover.com
+OCTOPUS_TOKEN=<JWT token copied from browser DevTools>
+
+# =================== General ==========================
 TEST_ENV=test
-
-# API base URLs per environment
-API_BASE_URL_DEV=http://127.0.0.1:8000
-API_BASE_URL_TEST=http://127.0.0.1:8000
-API_BASE_URL_PROD=http://127.0.0.1:8000
-
-# Timeout (seconds)
 API_TIMEOUT=30
-
-# Enterprise-specific credentials (example: WeCom)
-WECOM_BASE_URL=https://qyapi.weixin.qq.com
-WECOM_CORP_ID=your_corp_id
-WECOM_CONTACT_SECRET=your_secret
 ```
+
+> Get `OCTOPUS_TOKEN` from browser F12 → Network → any request → Request Headers → copy the value after `Authorization: Bearer==`.
 
 ### 4. Run Tests
 
 ```bash
-# Run all tests
-uv run pytest
+# Run all Octopus tests
+uv run pytest tests/test_octopus/ -v -s
 
-# Run tests for a specific environment
-uv run python main.py -e test
+# Run individual modules
+uv run pytest tests/test_octopus/test_warehouse_flow.py -v -s     # Warehouse
+uv run pytest tests/test_octopus/test_product_flow.py -v -s       # Product
+uv run pytest tests/test_octopus/test_channel_flow.py -v -s       # Channel
+uv run pytest tests/test_octopus/test_order_flow.py -v -s         # Order
 
-# Run with markers
-uv run pytest -m smoke
+# Health check (verify token is valid)
+uv run pytest tests/test_octopus/test_health.py -v -s
 
-# Run a specific test file
-uv run pytest tests/test_Wecom/test_create_department.py -v
-```
-
-### 5. View Report
-
-```bash
-# Generate Allure report
-uv run python main.py -e test
-
-# Open report
+# Run with Allure report
+uv run pytest --alluredir=reports/allure-results
+allure generate reports/allure-results -o reports/allure-report --clean
 allure open reports/allure-report
 ```
 
-Or start a local server:
+### 5. One-Click Run + Report
 
 ```bash
-cd reports/allure-report && python -m http.server 8080
+uv run python main.py -e test
 ```
 
 ## Project Structure
 
 ```
-.
-├── base/                        # Framework core (zero business logic)
-│   └── base_api_client.py       #   Generic HTTP client base class
-├── common/                      # Shared utilities
-│   ├── file_utils.py            #   Excel / JSON / YAML reader & writer
-│   └── log_utils.py             #   loguru-based logging
+Octopus_API_Auto/
+│
+├── base/                              # Framework core (zero business logic)
+│   └── base_api_client.py             #   Generic HTTP client base class
+│
+├── common/                            # Shared utilities
+│   ├── log_utils.py                   #   loguru-based logging
+│   ├── file_utils.py                  #   Excel / JSON / YAML reader & writer
+│   └── generate_orders.py             #   Random order Excel generator ★
+│
 ├── config/
-│   └── global_config.py         #   Paths, env, API URLs (env-var driven)
-├── integrations/                # External system integrations
-│   ├── auth_provider.py         #   AuthProvider ABC + StaticTokenAuth
-│   └── wecom/                   #   WeCom integration (example)
-│       ├── api_client.py        #     WeCom-specific HTTP client
-│       ├── wecom_token.py       #     Token manager (implements AuthProvider)
-│       └── wecom_error_code.py  #     Error code mapping
-├── services/                    # Business service layer
-│   └── wecom/
-│       └── department_service.py #   WeCom department CRUD
-├── tests/                       # Test cases
-│   └── test_Wecom/
-│       ├── conftest.py          #   WeCom fixtures (api_client, dept_service)
-│       ├── test_create_department.py
-│       ├── test_update_department.py
-│       ├── test_delete_department.py
-│       └── test_depart_manager.py
-├── data/                        # Test data
-│   ├── xlsx/                    #   Excel test data
-│   └── yaml/                    #   YAML test data
-├── .env.example                 # Environment variable template
-├── conftest.py                  # Global pytest fixtures (framework-level)
-├── main.py                      # CLI entry point (env switching + Allure)
-├── pyproject.toml               # Project config & dependencies
-└── uv.lock                      # Locked dependency versions
+│   └── global_config.py               #   Paths, env, API URLs (env-var driven)
+│
+├── integrations/                      # External system integrations (set up once)
+│   ├── auth_provider.py               #   AuthProvider ABC + StaticTokenAuth
+│   └── octopus/                       #   Octopus system integration
+│       ├── __init__.py                #     Standard setup flow documentation
+│       ├── auth.py                    #     Reads OCTOPUS_TOKEN from .env
+│       ├── api_client.py              #     HTTP client (Bearer== format)
+│       └── error_code.py              #     Error code mapping (TBD)
+│
+├── services/octopus/                  # Business service layer ★
+│   ├── warehouse_service.py           #   Warehouse: add / search / list_all / delete
+│   ├── product_service.py             #   Product: create / search / delist / relist / delete
+│   ├── channel_service.py             #   Channel: add / search / delete
+│   └── order_service.py               #   Order: import / match / bind / search / modify
+│
+├── tests/test_octopus/                # Test cases ★
+│   ├── conftest.py                    #   api_client fixture (session-scoped, auto-injected)
+│   ├── test_health.py                 #   Connectivity check
+│   ├── test_warehouse_flow.py         #   Warehouse flow: borrow → create → search → delete
+│   ├── test_product_flow.py           #   Product flow: create → search → delist → relist → delete
+│   ├── test_channel_flow.py           #   Channel flow: create → search → delete
+│   └── test_order_flow.py             #   Order flow: import → match → bind → search → modify
+│
+├── data/                              # Test data
+│   ├── json/
+│   ├── xlsx/
+│   └── yaml/
+│
+├── conftest.py                        # Global fixtures (auto failure snapshot)
+├── main.py                            # CLI entry point (env switching + Allure)
+├── pyproject.toml                     # Project config & dependencies
+└── uv.lock                            # Locked dependency versions
 ```
 
 ## Architecture
 
+### Three-Layer Separation
+
 ```
-┌──────────────────────────────────────────────────┐
-│                    tests/                         │
-│   conftest.py → api_client fixture                │
-│   (per enterprise, per module)                    │
-└────────────────────┬─────────────────────────────┘
-                     │ depends on
-┌────────────────────▼─────────────────────────────┐
-│                  services/                        │
-│   Business logic, calls integrations.ApiClient    │
-└────────────────────┬─────────────────────────────┘
-                     │ depends on
-┌────────────────────▼─────────────────────────────┐
-│               integrations/                       │
-│   ├── auth_provider.py    (AuthProvider ABC)      │
-│   └── <enterprise>/                                │
-│       ├── api_client.py   (extends BaseApiClient) │
-│       ├── auth.py         (extends AuthProvider)  │
-│       └── error_code.py                           │
-└────────────────────┬─────────────────────────────┘
-                     │ depends on
-┌────────────────────▼─────────────────────────────┐
-│                   base/                           │
-│   base_api_client.py  (pure HTTP, no business)    │
-└──────────────────────────────────────────────────┘
+tests layer         →  Only knows "did the API work?"
+                       service.add() / service.search() / service.delete()
+
+services layer      →  Only knows "what URL / method / parameters?"
+                       self.client.post("/v1/xxx", json={...})
+
+integrations layer  →  Only knows "how to attach the token?"
+                       "Authorization", "Bearer==xxx"
+```
+
+### Request Flow
+
+```
+test_warehouse_flow.py              # Test case
+  │  service = WarehouseService(api_client)
+  │  service.add(name="test_warehouse", **group_info)
+  ▼
+warehouse_service.py                # Service layer
+  │  self.client.post("/v1/wxorderware", json=body)
+  ▼
+api_client.py                       # Integration layer
+  │  self.set_header("Authorization", f"Bearer=={token}")
+  ▼
+base_api_client.py                  # Framework layer
+  │  self.session.request("POST", base_url + path, ...)
+  ▼
+api.wxorder.taover.com              # Server
 ```
 
 ### Key Design Principles
 
 1. **Root `conftest.py` is enterprise-agnostic** — only contains framework-level fixtures (failure snapshots).
 2. **Each enterprise owns its `api_client` fixture** — defined in `tests/<enterprise>/conftest.py`.
-3. **Auth is a pluggable interface** — `AuthProvider` ABC; WeCom's `WeComTokenManager` is one implementation.
+3. **Auth is a pluggable interface** — `AuthProvider` ABC; `OctopusAuth` is just one implementation.
 4. **All configuration via environment variables** — no hard-coded URLs or credentials.
 
 ## Adding a New Enterprise
@@ -206,7 +208,6 @@ from integrations.auth_provider import AuthProvider
 
 class AliCloudAuth(AuthProvider):
     def get_token(self, force_refresh=False):
-        # Your auth logic here
         return os.getenv("ALICLOUD_ACCESS_TOKEN", "")
 
     def is_valid(self):
@@ -244,29 +245,6 @@ tests/test_AliCloud/
 └── test_ecs.py
 ```
 
-`tests/test_AliCloud/conftest.py`:
-
-```python
-import os
-import pytest
-from integrations.alicloud.api_client import AliCloudClient
-from integrations.alicloud.auth import AliCloudAuth
-from services.alicloud.ecs_service import ECSService
-
-@pytest.fixture(scope="session")
-def api_client():
-    auth = AliCloudAuth()
-    base_url = os.getenv("ALICLOUD_BASE_URL", "https://ecs.aliyun.com")
-    client = AliCloudClient(base_url=base_url)
-    client.set_access_token(auth.get_token())
-    yield client
-    client.close()
-
-@pytest.fixture(scope="session")
-def ecs_service(api_client):
-    return ECSService(client=api_client)
-```
-
 ### Step 4: Add credentials to `.env`
 
 ```env
@@ -276,69 +254,75 @@ ALICLOUD_ACCESS_TOKEN=your_token
 
 **No framework files (`base/`, `common/`, `config/`, root `conftest.py`) need any changes.**
 
-## Running with Markers
+## Adding a New Module (Copycat Pattern)
 
-```bash
-# Smoke tests only
-uv run pytest -m smoke
+Using "Channel" as an example, each module needs only 2 files:
 
-# Regression tests
-uv run pytest -m regression
+**1. `services/octopus/channel_service.py` (API encapsulation):**
 
-# Tests for a specific enterprise
-uv run pytest -m wecom
+```python
+class ChannelService:
+    def __init__(self, client):
+        self.client = client
 
-# Combine markers
-uv run pytest -m "smoke and wecom"
+    def add(self, name, **kwargs):
+        resp = self.client.post("/v1/wxorderchannel", json={"name": name, **kwargs})
+        return resp.json()
+
+    def search(self, name):
+        resp = self.client.get("/v1/wxorderchannel", params={"name": name})
+        return resp.json()
+
+    def delete(self, channel_id):
+        resp = self.client.delete(f"/v1/wxorderchannel/{channel_id}")
+        return resp.json()
 ```
 
-## Running Failed Tests Only
+**2. `tests/test_octopus/test_channel_flow.py` (test case):**
 
-```bash
-uv run pytest --lf       # last failed
-uv run pytest --ff       # first failed, then rest
-```
+```python
+from services.octopus.channel_service import ChannelService
 
-## Rerun Flaky Tests
+class TestChannel:
+    def test_channel_flow(self, api_client):
+        service = ChannelService(api_client)
 
-```bash
-uv run pytest --reruns 2 --reruns-delay 1
+        add_res = service.add(name="test_channel")
+        assert add_res.get("code") == "ok"
+
+        search_res = service.search(name="test_channel")
+        assert search_res.get("code") == "ok"
+
+        channel_id = search_res["data"]["rows"][0]["id"]
+        del_res = service.delete(channel_id)
+        assert del_res.get("code") == "ok"
 ```
 
 ## CI/CD
 
 ### GitHub Actions
 
-Push to `main` or create a PR. Pipeline steps:
-1. Install uv + dependencies
-2. Run pytest with Allure results
-3. Generate Allure HTML report
-4. Upload report artifact
-5. Deploy to GitHub Pages
-6. Send notifications (DingTalk / WeCom / Email)
-
-Configure these GitHub Secrets:
+Configure these secrets in GitHub `Settings → Secrets and variables → Actions`:
 
 | Secret | Description |
 |--------|-------------|
+| `OCTOPUS_TOKEN` | Octopus JWT Token (required) |
 | `WECOM_CORP_ID` | WeCom Corp ID |
 | `WECOM_CONTACT_SECRET` | WeCom Contact Secret |
 | `DING_WEBHOOK` | DingTalk bot webhook URL |
 | `WECOM_WEBHOOK` | WeCom bot webhook URL |
-| `MAIL_USERNAME` | SMTP username |
-| `MAIL_PASSWORD` | SMTP password |
-| `MAIL_TO` | Recipient email |
 
 ### GitLab CI
 
-`.gitlab-ci.yaml` is pre-configured. Set CI/CD variables in GitLab project settings:
+Set CI/CD variables in GitLab project `Settings → CI/CD → Variables`:
 
+- `OCTOPUS_TOKEN`
 - `WECOM_CORP_ID`
 - `WECOM_CONTACT_SECRET`
 
 ### Gitee
 
-`.gitee/workflows/ci.yaml` is pre-configured.
+Add `OCTOPUS_TOKEN` etc. in project settings → Secrets.
 
 ## Code Quality
 
@@ -349,40 +333,26 @@ uv run pre-commit run --all-files
 # Format code
 uv run black .
 uv run isort .
-
-# Lint
-uv run flake8 .
 ```
 
 ## FAQ
+
+### Q: Tests return `not_authorized`?
+
+Your token has expired. Open browser DevTools (F12), copy the new `Authorization: Bearer==xxx` value, and update `OCTOPUS_TOKEN` in `.env`.
+
+### Q: Warehouse test fails with "this group is already in use"?
+
+Each WeChat group can only be bound to one warehouse. `test_warehouse_flow.py` uses a "borrow group" strategy: list all warehouses, delete one to free its group, then reuse that group for the test.
+
+### Q: Order test fails with "Excel file is being processed"?
+
+Order generation is asynchronous. Wait a minute and re-run, or change the consignee name.
 
 ### Q: How do I add a new dependency?
 
 ```bash
 uv add <package-name>
-```
-
-This updates both `pyproject.toml` and `uv.lock`.
-
-### Q: How do I change Python version?
-
-Edit `requires-python` in `pyproject.toml`, then run:
-
-```bash
-uv sync
-```
-
-### Q: Allure command not found?
-
-```bash
-# macOS
-brew install allure
-
-# Linux (manual)
-wget -qO allure.tgz https://github.com/allure-framework/allure2/releases/download/2.39.0/allure-2.39.0.tgz
-tar -zxf allure.tgz
-sudo mv allure-2.39.0 /opt/allure
-sudo ln -s /opt/allure/bin/allure /usr/local/bin/allure
 ```
 
 ### Q: How do I run tests in parallel?
@@ -392,10 +362,4 @@ uv add pytest-xdist
 uv run pytest -n auto
 ```
 
-### Q: Does the framework support gRPC / WebSocket?
-
-No — it's designed for RESTful HTTP APIs. You can extend `base_api_client.py` for other protocols.
-
 ## License
-
-Internal use.

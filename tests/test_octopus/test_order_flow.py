@@ -4,7 +4,7 @@
 @Author: guowendong
 @Desc: 订单管理全流程：导入 → 匹配 → 关联 → 查询 → 改金额
 """
-import os
+import random
 import time
 
 from common.generate_orders import generate_order_excel
@@ -75,9 +75,7 @@ class TestOrder:
 
         # ===== 6. 修改订单金额 =====
         modify_res = service.modify_amount(
-            order_id=str(order_id),
-            money_paid="99",
-            shipping_price="11",
+            order_id=str(order_id), money_paid=str(random.randint(20, 1000)), shipping_price=str(random.randint(10, 30))
         )
         assert modify_res.get("code") == "ok", f"修改金额失败: {modify_res.get('error', modify_res)}"
         print("✅ 6. 订单金额修改成功")

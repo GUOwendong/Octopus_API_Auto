@@ -15,6 +15,8 @@ jobs:
     env:
       ALLURE_RESULTS_DIR: ${{ github.workspace }}/allure-results
       ALLURE_REPORT_DIR: ${{ github.workspace }}/allure-report
+      OCTOPUS_BASE_URL: http://api.wxorder.taover.com
+      OCTOPUS_TOKEN: ${{ secrets.OCTOPUS_TOKEN }}
     steps:
       # 第一步：从 GitHub 把代码拉到虚拟机里
       - name: 拉取代码
