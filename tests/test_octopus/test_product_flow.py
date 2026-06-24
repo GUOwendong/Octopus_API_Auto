@@ -1,16 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-商品管理测试用例 — framework 风格
-===================================
-接口调用 → ProductService（services 层）
-HTTP / 认证 → api_client fixture（conftest 自动注入）
-
-对照你原来的写法：
-  旧: requests.post(url, headers=HEADERS, json={...})
-  新: service.create(goods_name="西瓜")
+@Author: guowendong
+@Desc: 商品管理全流程：新增 → 查询 → 下架 → 上架 → 删除
 """
-
 import io
 
 import pandas as pd
@@ -19,7 +12,6 @@ from services.octopus.product_service import ProductService
 
 
 class TestProduct:
-    """商品管理全流程：新增 → 查询 → 下架 → 上架 → 删除"""
 
     def test_product_flow(self, api_client):
         """

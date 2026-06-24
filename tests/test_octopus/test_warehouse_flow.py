@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 @Author: guowendong
-@Desc: 接口调用 → WarehouseService（services 层）HTTP / 认证 → api_client fixture（conftest 自动注入）
+@Desc: 仓库管理全流程：借群释放 → 新增 → 查询 → 删除
 """
 import uuid
 
@@ -10,7 +10,6 @@ from services.octopus.warehouse_service import WarehouseService
 
 
 class TestWarehouse:
-    """仓库管理全流程：借群释放 → 新增 → 查询 → 删除"""
 
     def test_warehouse_flow(self, api_client):
         service = WarehouseService(api_client)
@@ -56,3 +55,4 @@ class TestWarehouse:
         assert wid, "未能获取仓库 ID"
         dr = service.delete(int(wid))
         assert dr.get("code") == "ok", f"删除失败: {dr.get('error', dr)}"
+        print("✅ 仓库全流程测试通过")

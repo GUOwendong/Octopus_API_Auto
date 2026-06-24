@@ -2,13 +2,12 @@
 # -*- coding: utf-8 -*-
 """
 @Author: guowendong
-@Desc: Conducting code practice and testing development work
+@Desc: 渠道管理全流程：新增 —> 查询 —> 删除
 """
 from services.octopus.channel_service import ChannelService
 
 
 class TestChannel:
-    """渠道管理全流程：新增 —> 查询 —> 删除"""
 
     def test_channel_flow(self, api_client):
         service = ChannelService(api_client)
