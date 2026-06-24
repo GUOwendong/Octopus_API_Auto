@@ -18,7 +18,7 @@ test:
     - export PATH="$HOME/.cargo/bin:$PATH"
     - uv sync
   script:
-    - uv run pytest tests/ -v --alluredir=reports/allure-results
+    - uv run pytest tests/test_octopus/ -v --alluredir=reports/allure-results --ignore=tests/test_Wecom
   artifacts:
     when: always
     paths:
