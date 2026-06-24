@@ -1,0 +1,2 @@
+13:50:41 | INFO     | services.octopus.product_service:create:58 - 🆕新增商品: 西瓜
+13:51:12 | ERROR    | conftest:auto_failure_snapshot:34 - ❌ 用例失败: test_product_flow，快照已保存: /home/runner/work/Octopus_API_Auto/Octopus_API_Auto/screenshots/test_product_flow.txt

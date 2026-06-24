@@ -1,0 +1,3 @@
+13:51:12 | INFO     | services.octopus.warehouse_service:list_all:73 - 🔍查询所有仓库 (size=100)
+13:51:42 | ERROR    | conftest:auto_failure_snapshot:34 - ❌ 用例失败: test_warehouse_flow，快照已保存: /home/runner/work/Octopus_API_Auto/Octopus_API_Auto/screenshots/test_warehouse_flow.txt
+13:51:42 | INFO     | tests.test_octopus.conftest:api_client:69 - Octopus ApiClient 已关闭
