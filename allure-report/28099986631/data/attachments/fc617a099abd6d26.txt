@@ -1,0 +1,1 @@
+12:56:29 | ERROR    | conftest:auto_failure_snapshot:34 - ❌ 用例失败: test_login_check，快照已保存: /home/runner/work/Octopus_API_Auto/Octopus_API_Auto/screenshots/test_login_check.txt

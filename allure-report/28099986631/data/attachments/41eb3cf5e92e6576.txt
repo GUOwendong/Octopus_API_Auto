@@ -1,0 +1,4 @@
+📄 使用Excel: /home/runner/work/Octopus_API_Auto/Octopus_API_Auto/data/随机订单数据_20260624_125629.xlsx
+📦 商品: 香薰蜡烛, 收件人: 吕沐晴, 电话: 12599247891
+12:56:29 | INFO     | services.octopus.order_service:import_excel:39 - 📤导入 Excel: /home/runner/work/Octopus_API_Auto/Octopus_API_Auto/data/随机订单数据_20260624_125629.xlsx, 渠道: 9910335
+12:56:59 | ERROR    | conftest:auto_failure_snapshot:34 - ❌ 用例失败: test_order_flow，快照已保存: /home/runner/work/Octopus_API_Auto/Octopus_API_Auto/screenshots/test_order_flow.txt
