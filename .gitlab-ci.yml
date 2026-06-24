@@ -13,9 +13,14 @@ cache:
 test:
   stage: test
   image: python:3.13
+  variables:
+    PATH: "$HOME/.local/bin:$PATH"
+    WECOM_CORP_ID: $WECOM_CORP_ID
+    WECOM_CONTACT_SECRET: $WECOM_CONTACT_SECRET
+    OCTOPUS_BASE_URL: http://api.wxorder.taover.com
+    OCTOPUS_TOKEN: $OCTOPUS_TOKEN
   before_script:
     - curl -LsSf https://astral.sh/uv/install.sh | sh
-    - export PATH="$HOME/.cargo/bin:$PATH"
     - uv sync
   script:
     - uv run pytest tests/test_octopus/ -v --alluredir=reports/allure-results --ignore=tests/test_Wecom
@@ -23,11 +28,6 @@ test:
     when: always
     paths:
       - reports/allure-results
-  variables:
-    WECOM_CORP_ID: $WECOM_CORP_ID
-    WECOM_CONTACT_SECRET: $WECOM_CONTACT_SECRET
-    OCTOPUS_BASE_URL: http://api.wxorder.taover.com
-    OCTOPUS_TOKEN: $OCTOPUS_TOKEN
 
 generate_report:
   stage: report
