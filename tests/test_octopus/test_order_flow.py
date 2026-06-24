@@ -5,22 +5,29 @@
 @Desc: 订单管理全流程：导入 → 匹配 → 关联 → 查询 → 改金额
 """
 import os
+import time
 
 from common.generate_orders import generate_order_excel
 from services.octopus.order_service import OrderService
-
-# =================== 测试数据 ===================
-EXCEL_NAME = "工作簿14.xlsx"
-CHANNEL_ID = "9910335"
-CHANNEL_GOODS_ID = 103060
-CHANNEL_GOODS_NAME = "魔法棒"
-CONSIGNEE = "唐三"  # Excel 里的收货人
-MOBILE = "13997463411"  # Excel 里的手机号
 
 
 class TestOrder:
 
     def test_order_flow(self, api_client):
+        file_path, orders = generate_order_excel(row_count=1)
+        assert len(orders) > 0, "生成订单数据为空"
+        order = orders[0]
+
+        EXCEL_NAME = file_path
+        CHANNEL_ID = "9910335"
+        CHANNEL_GOODS_ID = 103060
+        CHANNEL_GOODS_NAME = order.get("商品名称")
+        CONSIGNEE = order.get("收件人")
+        MOBILE = order.get("收件人电话")
+
+        print(f"📄 使用Excel: {EXCEL_NAME}")
+        print(f"📦 商品: {CHANNEL_GOODS_NAME}, 收件人: {CONSIGNEE}, 电话: {MOBILE}")
+
         """
         流程说明：
         1. 导入 Excel 文件
@@ -55,6 +62,7 @@ class TestOrder:
         # 系统异步处理，返回 "文件已转入系统后台处理"
         assert bind_res.get("code") == "ok", f"关联商品失败: {bind_res.get('error', bind_res)}"
         print(f"✅ 4. 商品关联成功，系统后台生成订单中")
+        time.sleep(3)
 
         # ===== 5. 查询订单 =====
         search_res = service.search(consignee=CONSIGNEE, mobile=MOBILE)
