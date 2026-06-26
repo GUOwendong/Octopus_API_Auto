@@ -1,0 +1,26 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"","0","test_order_flow","tests.test_octopus","2026-06-26","broken","2026-06-26","TestOrder","test_order_flow","",""
+"
+流程说明：
+1. 新增商品 → 拿到 SKU_ID
+2. 查询商品 → 验证新增成功，拿到商品 ID
+3. 下架商品
+4. 上架商品
+5. 删除商品（返回 Excel，解析验证）
+","0","test_product_flow","tests.test_octopus","2026-06-26","broken","2026-06-26","TestProduct","test_product_flow","",""
+"","0","test_warehouse_flow","tests.test_octopus","2026-06-26","broken","2026-06-26","TestWarehouse","test_warehouse_flow","",""
+"
+验证 token 和网络连通性
+========================
+api_client 参数由 conftest.py 中的 fixture 自动注入，无需手动创建。
+
+执行逻辑：
+1. 用 api_client 向 /login 发 GET 请求
+2. 打印 HTTP 状态码（200 表示请求成功到达服务器）
+3. 打印响应内容（查看服务器返回了什么）
+
+如果返回 200，说明：网络通 + token 能被服务器接受
+如果返回 401/403，说明 token 过期或无效，需要重新从浏览器抓取
+如果超时/连接失败，检查 BASE_URL 是否正确
+","0","test_login_check","tests.test_octopus","2026-06-26","broken","2026-06-26","","test_health","",""
+"","0","test_channel_flow","tests.test_octopus","2026-06-26","broken","2026-06-26","TestChannel","test_channel_flow","",""
