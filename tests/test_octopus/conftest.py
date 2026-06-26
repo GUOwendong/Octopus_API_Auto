@@ -25,7 +25,7 @@ from common.log_utils import log
 # OctopusClient：你的 HTTP 客户端，负责发请求
 from integrations.octopus.api_client import OctopusClient
 
-# OctopusAuth：你的认证类，负责从 .env 读取 token
+# OctopusAuth：你的认证类，负责通过账号密码登录获取 token
 from integrations.octopus.auth import OctopusAuth
 
 
@@ -39,31 +39,30 @@ def api_client():
     使用 yield 确保测试结束后自动关闭客户端。
 
     执行流程：
-    1. 创建 OctopusAuth 实例，从 .env 读 token
-    2. 创建 OctopusClient 实例，设置 base_url
-    3. 把 token 注入客户端
-    4. yield client → 测试用例拿到 client 开始执行
-    5. 测试全部结束后，client.close() 关闭 HTTP 连接
+    1. 创建 OctopusAuth 实例，从 .env 读用户名密码
+    2. 调用 get_token() 自动登录，获取 JWT Token
+    3. 创建 OctopusClient 实例，注入 token
+    4. yield client → 测试用例拿到 client 执行
+    5. 测试结束后关闭客户端
     """
-    # 1. 创建认证对象，自动从环境变量 OCTOPUS_TOKEN 读取 token
+    # 1. 创建认证对象，从 .env 读 OCTOPUS_USERNAME / OCTOPUS_PASSWORD
     auth = OctopusAuth()
 
-    # 2. 从环境变量 OCTOPUS_BASE_URL 读取 API 地址，没有则用默认值
+    # 2. 获取 token（首次调用会自动登录）
+    token = auth.get_token()
+
+    # 3. 从环境变量读 API 地址
     base_url = os.getenv("OCTOPUS_BASE_URL", "http://api.wxorder.taover.com")
 
-    # 3. 创建 HTTP 客户端
+    # 4. 创建 HTTP 客户端，注入 token
     client = OctopusClient(base_url=base_url)
-
-    # 4. 把 token 注入客户端（设置到 Authorization 请求头）
-    token = auth.get_token()
     client.set_token(token)
 
-    # 5. 日志记录
     log.info("✅ Octopus ApiClient 已初始化")
 
     # yield：把 client 交给测试用例使用
     yield client
 
-    # 所有测试用例执行完毕后，关闭客户端（释放 HTTP 连接）
+    # 所有测试用例执行完毕后，关闭客户端
     client.close()
     log.info("Octopus ApiClient 已关闭")

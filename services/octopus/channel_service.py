@@ -11,6 +11,7 @@
 - 查询渠道  GET    /v1/wxorderchannel?name=xxx
 - 删除渠道  DELETE   /v1/wxorderchannel/{id}
 """
+import os
 from typing import Any, Dict
 
 from common.log_utils import log
@@ -32,14 +33,13 @@ class ChannelService:
         :param kwargs: 其他可选字段，如 manager，managerNickname, wxGroupNickname 等
         :return: 服务器返回的 JSON 字典
         """
-        # 构建请求体（必须通过 kwargs 传入）
-        # 至少需要传：manager，managerNickname，wxGroupNickname，wxReceiveNickname
+        # 构建请求体，可从环境变量覆盖（避免硬编码失效）
         body = {
             "name": name,
-            "manager": "S:1688851806310976_1688857021633656",
-            "managerNickname": "王田甜",
-            "wxGroupNickname": "钱老师-大课",
-            "wxReceiveNickname": "修然",
+            "manager": os.getenv("CHANNEL_MANAGER", "S:1688851806310976_1688857021633656"),
+            "managerNickname": os.getenv("CHANNEL_MANAGER_NICKNAME", "王田甜"),
+            "wxGroupNickname": os.getenv("CHANNEL_WX_GROUP_NICKNAME", "钱老师-大课"),
+            "wxReceiveNickname": os.getenv("CHANNEL_WX_RECEIVE_NICKNAME", "修然"),
         }
         # kwargs 传入的字段会合并到 body 中
         body.update(kwargs)

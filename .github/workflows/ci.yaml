@@ -65,7 +65,7 @@ jobs:
         id: test
         run: |
           mkdir -p $ALLURE_RESULTS_DIR
-          uv run pytest tests/test_octopus/ -v --alluredir=$ALLURE_RESULTS_DIR --ignore=tests/test_Wecom --ignore=tests/__init__.py
+          uv run pytest tests/test_octopus/ -v --alluredir=$ALLURE_RESULTS_DIR
           exit_code=$?
           echo "EXIT_CODE=$exit_code" >> $GITHUB_OUTPUT
           exit $exit_code

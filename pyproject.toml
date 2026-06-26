@@ -1,7 +1,7 @@
 [project]
 name = "interface-automation"
 version = "0.1.0"
-description = "Enterprise WeChat Interface Automation Project"
+description = "Octopus (八爪鱼) API Automation Project"
 authors = [{ name = "guowendong" }]
 requires-python = ">=3.13"
 dependencies = [
@@ -52,7 +52,6 @@ python_functions = "test_*"
 markers = [
     "smoke: smoke test",
     "regression: regression test",
-    "wecom: wecom interface test"
 ]
 
 

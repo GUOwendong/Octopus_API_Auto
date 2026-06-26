@@ -4,7 +4,6 @@
 错误码映射 (Error Code Mapping)
 ================================
 职责：把服务器返回的业务错误码（如 1001、2001）翻译成人类可读的错误信息。
-参考 integrations/wecom/wecom_error_code.py 的写法。
 
 用法示例：
     from integrations.octopus.error_code import get_error_message

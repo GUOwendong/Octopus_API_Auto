@@ -21,6 +21,11 @@ class FileUtil:
         """Convert the relative path to an absolute path within the data directory"""
         return DATA_DIR / file_name
 
+    @staticmethod
+    def resolve_path(file_name: str) -> Path:
+        """公开方法：将相对路径转为 data 目录内的绝对路径"""
+        return FileUtil._get_full_path(file_name)
+
     # ======================================= Excel operations ===========================================
     @staticmethod
     def read_excel(file_name, sheet_name=0):

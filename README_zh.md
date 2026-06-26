@@ -1,12 +1,12 @@
-# 接口自动化框架
+# 八爪鱼接口自动化
 
-轻量、可扩展、多企业即插即用的 API 自动化框架。克隆、配置、运行——零改动适配你自身的业务。
+轻量、可扩展的八爪鱼系统 API 自动化测试项目。克隆、配置、运行。
 
 [English Documentation](README.md)
 
 ## 特性
 
-- **多企业即插即用** — 可插拔的 `AuthProvider` + `ApiClient`，换企业不需要改框架代码。
+- **框架基类** — `AuthProvider` 抽象基类 + `BaseApiClient` HTTP 客户端，换系统无需改底层代码。
 - **分层架构** — `base`（HTTP 客户端）→ `integrations`（认证 + API 客户端）→ `services`（业务逻辑）→ `tests`（测试用例）。
 - **数据驱动** — 支持 JSON / YAML / Excel 测试数据；`pytest.mark.parametrize` 集成。
 - **随机数据生成** — `generate_orders.py` 每次生成唯一测试数据，避免重复冲突。
@@ -326,18 +326,13 @@ class TestChannel:
 | Secret | 说明 |
 |--------|------|
 | `OCTOPUS_TOKEN` | 八爪鱼 JWT Token（必填） |
-| `WECOM_CORP_ID` | 企业微信 Corp ID |
-| `WECOM_CONTACT_SECRET` | 企业微信通讯录 Secret |
 | `DING_WEBHOOK` | 钉钉机器人 Webhook |
-| `WECOM_WEBHOOK` | 企业微信机器人 Webhook |
 
 ### GitLab CI
 
 在 GitLab 项目 `Settings → CI/CD → Variables` 中添加：
 
 - `OCTOPUS_TOKEN`
-- `WECOM_CORP_ID`
-- `WECOM_CONTACT_SECRET`
 
 ### Gitee
 

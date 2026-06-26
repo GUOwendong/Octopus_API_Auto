@@ -15,8 +15,6 @@
 """
 from typing import Any, Dict
 
-import requests
-
 from common.log_utils import log
 from integrations.octopus.api_client import OctopusClient
 
@@ -102,7 +100,7 @@ class ProductService:
         return resp.json()
 
     # ======================== 删除商品 ========================
-    def delete(self, goods_id: int) -> requests.Response:
+    def delete(self, goods_id: int) -> Any:
         """
         删除商品（返回 Excel 文件，不是 JSON）
         :param goods_id: 商品 ID

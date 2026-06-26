@@ -25,10 +25,8 @@ jobs:
 
       - name: 运行测试并生成 Allure 结果
         run: |
-          uv run pytest tests/test_octopus/ -v --alluredir=reports/allure-results --ignore=tests/test_Wecom
+          uv run pytest tests/test_octopus/ -v --alluredir=reports/allure-results
         env:
-          WECOM_CORP_ID: ${{ secrets.WECOM_CORP_ID }}
-          WECOM_CONTACT_SECRET: ${{ secrets.WECOM_CONTACT_SECRET }}
           OCTOPUS_BASE_URL: http://api.wxorder.taover.com
           OCTOPUS_TOKEN: ${{ secrets.OCTOPUS_TOKEN }}
 

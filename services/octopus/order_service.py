@@ -38,7 +38,7 @@ class OrderService:
         """
         log.info(f"📤导入 Excel: {file_name}, 渠道: {channel_id}")
         # 用户传入文件名，转为本地文件的绝对路径
-        file_path = FileUtil._get_full_path(file_name)  # noqa
+        file_path = FileUtil.resolve_path(file_name)
         with open(file_path, "rb") as f:
             resp = self.client.post(
                 # 请求路径

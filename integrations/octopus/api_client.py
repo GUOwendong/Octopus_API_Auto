@@ -16,4 +16,4 @@ class OctopusClient(BaseApiClient):
 
     def set_token(self, token: str):
         """设置 Bearer Token 到 Authorization 请求头（格式：Bearer==xxx，注意是双等号）"""
-        self.set_header("Authorization", f"Bearer=={token}")
+        self.set_header("Authorization", f"{token}")

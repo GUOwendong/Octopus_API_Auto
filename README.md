@@ -1,17 +1,17 @@
-# Interface Automation Framework
+# Octopus API Automation
 
-A lightweight, extensible, multi-enterprise API automation framework. Clone, configure, and run — zero adaptation needed for your own business.
+A lightweight, extensible API automation project for the Octopus (八爪鱼) system. Clone, configure, and run.
 
 [中文文档](README_zh.md)
 
 ## Features
 
-- **Multi-Enterprise Ready** — Pluggable `AuthProvider` and `ApiClient`; no framework code changes when switching enterprises.
+- **Framework Architecture** — Pluggable `AuthProvider` and `ApiClient` with clean separation; no framework code changes when switching systems.
 - **Layered Architecture** — `base` (HTTP client) → `integrations` (auth + API client) → `services` (business logic) → `tests` (test cases).
 - **Data-Driven** — Supports JSON / YAML / Excel test data; `pytest.mark.parametrize` integration.
 - **Random Data Generation** — `generate_orders.py` creates unique test data per run, avoiding conflicts.
 - **Allure Reports** — Built-in Allure integration with automatic HTML report generation.
-- **CI/CD Ready** — Pre-configured pipelines for GitHub Actions, GitLab CI, and Gitee (with DingTalk/WeCom/email notifications).
+- **CI/CD Ready** — Pre-configured pipelines for GitHub Actions, GitLab CI, and Gitee (with DingTalk/email notifications).
 - **Code Quality** — `black` + `isort` + `pre-commit` hooks out of the box.
 - **Failure Snapshots** — Automatic context snapshot saved when a test fails, for fast triage.
 
@@ -145,7 +145,7 @@ Octopus_API_Auto/
 └── uv.lock                            # Locked dependency versions
 ```
 
-## Architecture
+## Framework Architecture
 
 ### Three-Layer Separation
 
@@ -307,18 +307,13 @@ Configure these secrets in GitHub `Settings → Secrets and variables → Action
 | Secret | Description |
 |--------|-------------|
 | `OCTOPUS_TOKEN` | Octopus JWT Token (required) |
-| `WECOM_CORP_ID` | WeCom Corp ID |
-| `WECOM_CONTACT_SECRET` | WeCom Contact Secret |
 | `DING_WEBHOOK` | DingTalk bot webhook URL |
-| `WECOM_WEBHOOK` | WeCom bot webhook URL |
 
 ### GitLab CI
 
 Set CI/CD variables in GitLab project `Settings → CI/CD → Variables`:
 
 - `OCTOPUS_TOKEN`
-- `WECOM_CORP_ID`
-- `WECOM_CONTACT_SECRET`
 
 ### Gitee
 
@@ -343,7 +338,7 @@ Your token has expired. Open browser DevTools (F12), copy the new `Authorization
 
 ### Q: Warehouse test fails with "this group is already in use"?
 
-Each WeChat group can only be bound to one warehouse. `test_warehouse_flow.py` uses a "borrow group" strategy: list all warehouses, delete one to free its group, then reuse that group for the test.
+Each group can only be bound to one warehouse. `test_warehouse_flow.py` uses a "borrow group" strategy: list all warehouses, delete one to free its group, then reuse that group for the test.
 
 ### Q: Order test fails with "Excel file is being processed"?
 

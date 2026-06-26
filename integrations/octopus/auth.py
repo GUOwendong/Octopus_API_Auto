@@ -3,18 +3,19 @@
 """
 认证层 (Auth Layer)
 ====================
-职责：从环境变量 .env 中读取 token，提供给 api_client 使用。
-每个企业系统需要写自己的 Auth 类，继承框架的 AuthProvider 抽象基类。
+职责：通过账号密码调用 /login 接口获取 JWT Token。
+token 缓存起来，过期自动重新登录。
 
 使用方式：
-    auth = OctopusAuth()        # 实例化，自动从 .env 读取 token
-    token = auth.get_token()    # 获取 token 字符串
+    auth = OctopusAuth()        # 自动从 .env 读用户名密码
+    token = auth.get_token()    # 返回 token（首次调用自动登录）
 """
 
-# os 模块：读取系统环境变量（.env 文件通过 python-dotenv 自动加载到环境变量中）
 import os
 
-# 导入框架提供的认证抽象基类，所有企业的 Auth 类都要继承它
+import requests
+
+from common.log_utils import log
 from integrations.auth_provider import AuthProvider
 
 
@@ -22,28 +23,45 @@ class OctopusAuth(AuthProvider):
     """
     八爪鱼系统认证类
     ----------------
-    认证方式：JWT Bearer Token（静态 token，从浏览器手动提取后配置在 .env 中）
+    认证方式：账号密码 → POST /login → 返回 JWT Token
     继承 AuthProvider，必须实现 get_token() 方法
     """
 
     def __init__(self):
-        """
-        初始化时从环境变量 OCTOPUS_TOKEN 读取 token
-        os.getenv("KEY", "默认值") → 读环境变量，不存在则返回默认值
-        """
-        self._token = os.getenv("OCTOPUS_TOKEN", "")
+        """从 .env 读取用户名和密码"""
+        self._token = ""
+        self._base_url = os.getenv("OCTOPUS_BASE_URL", "http://api.wxorder.taover.com")
+        self._username = os.getenv("OCTOPUS_USERNAME", "")
+        self._password = os.getenv("OCTOPUS_PASSWORD", "")
+
+    def login(self):
+        """调 /login 接口，用账号密码获取 token"""
+        log.info("🔐 开始登录获取 token...")
+        resp = requests.post(
+            url=f"{self._base_url}/login",
+            json={"username": self._username, "password": self._password},
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(f"登录失败, HTTP {resp.status_code}: {resp.text[:200]}")
+        data = resp.json()
+        if data.get("code") != "ok":
+            raise RuntimeError(f"登录失败: {data.get('error', data)}")
+
+        self._token = (data.get("data") or {}).get("token", "")
+        if not self._token:
+            raise RuntimeError(f"登录响应缺少 token: {data}")
+        log.info(f"✅ 登录成功, token前20字符: {self._token[:20]}...")
 
     def get_token(self, force_refresh=False):
         """
-        获取认证 token（AuthProvider 要求实现的方法）
-        参数 force_refresh：是否强制刷新，此处 token 是静态的，忽略此参数
-        返回：token 字符串
+        获取认证 token
+        - 首次调用 / token 为空 → 自动登录
+        - force_refresh=True → 强制重新登录
         """
+        if force_refresh or not self._token:
+            self.login()
         return self._token
 
     def is_valid(self):
-        """
-        判断当前 token 是否有效
-        此处简单判断 token 是否为空字符串
-        """
+        """判断当前 token 是否有效"""
         return bool(self._token)
