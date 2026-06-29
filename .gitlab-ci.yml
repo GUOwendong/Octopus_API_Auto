@@ -16,12 +16,13 @@ test:
   variables:
     PATH: "$HOME/.local/bin:$PATH"
     OCTOPUS_BASE_URL: http://api.wxorder.taover.com
-    OCTOPUS_TOKEN: $OCTOPUS_TOKEN
+    OCTOPUS_USERNAME: $OCTOPUS_USERNAME
+    OCTOPUS_PASSWORD: $OCTOPUS_PASSWORD
   before_script:
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - uv sync
   script:
-    - uv run pytest tests/test_octopus/ -v --alluredir=reports/allure-results --ignore=tests/test_Wecom
+    - uv run pytest tests/test_octopus/ -v --alluredir=reports/allure-results
   artifacts:
     when: always
     paths:

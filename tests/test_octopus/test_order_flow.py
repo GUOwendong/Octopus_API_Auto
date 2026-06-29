@@ -42,7 +42,7 @@ class TestOrder:
         # ===== 1. 导入 Excel 文件 =====
         import_res = service.import_excel(channel_id=CHANNEL_ID, file_name=EXCEL_NAME)
         assert import_res.get("code") == "ok", f"导入失败: {import_res.get('error', import_res)}"
-        excel_data_id = import_res["data"]["excelDataId"]
+        excel_data_id = import_res.get("data", {}).get("excelDataId")
         print(f"✅ 1. Excel 导入成功, excelDataId={excel_data_id}")
 
         # ===== 2. 匹配表头（Excel列 → 系统字段映射）=====

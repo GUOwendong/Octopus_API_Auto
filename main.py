@@ -20,7 +20,7 @@ def run_tests(env: str = "test") -> bool:
     os.environ["TEST_ENV"] = env
     log.info(f"开始运行测试，环境: {env}")
 
-    pytest_cmd = ["pytest", "-v", "-s"]
+    pytest_cmd = ["pytest", "tests/test_octopus/", "-v", "-s"]
     log.info(f"执行: {' '.join(pytest_cmd)}")
     pytest_result = subprocess.run(pytest_cmd)
 

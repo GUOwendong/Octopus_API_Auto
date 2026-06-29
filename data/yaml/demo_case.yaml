@@ -1,7 +1,0 @@
-- case_name: 正常账号登录
-  username: test01
-  password: 123456
-
-- case_name: 错误密码登录
-  username: test01
-  password: 666666

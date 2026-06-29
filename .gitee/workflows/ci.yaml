@@ -10,25 +10,28 @@ on:
 
 jobs:
   test:
-    runs-on: python-3.13
+    runs-on: ubuntu-latest
     steps:
-      - checkout: self
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
 
       - name: 安装 uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          export PATH="$HOME/.cargo/bin:$PATH"
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
       - name: 安装依赖
-        run: |
-          uv sync
+        run: uv sync
 
       - name: 运行测试并生成 Allure 结果
-        run: |
-          uv run pytest tests/test_octopus/ -v --alluredir=reports/allure-results
+        run: uv run pytest tests/test_octopus/ -v --alluredir=reports/allure-results
         env:
           OCTOPUS_BASE_URL: http://api.wxorder.taover.com
-          OCTOPUS_TOKEN: ${{ secrets.OCTOPUS_TOKEN }}
+          OCTOPUS_USERNAME: ${{ secrets.OCTOPUS_USERNAME }}
+          OCTOPUS_PASSWORD: ${{ secrets.OCTOPUS_PASSWORD }}
 
       - name: 归档 Allure 结果
         if: always()

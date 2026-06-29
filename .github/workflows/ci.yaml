@@ -16,7 +16,8 @@ jobs:
       ALLURE_RESULTS_DIR: ${{ github.workspace }}/allure-results
       ALLURE_REPORT_DIR: ${{ github.workspace }}/allure-report
       OCTOPUS_BASE_URL: http://api.wxorder.taover.com
-      OCTOPUS_TOKEN: ${{ secrets.OCTOPUS_TOKEN }}
+      OCTOPUS_USERNAME: ${{ secrets.OCTOPUS_USERNAME }}
+      OCTOPUS_PASSWORD: ${{ secrets.OCTOPUS_PASSWORD }}
     steps:
       # 第一步：从 GitHub 把代码拉到虚拟机里
       - name: 拉取代码
@@ -132,6 +133,32 @@ jobs:
           JSON=$(jq -n --arg content "$CONTENT" '{msgtype: "text", text: {content: $content}}')
 
           curl -s -X POST "$WECOM_WEBHOOK" -H "Content-Type: application/json" -d "$JSON"
+
+      # 第十三步：自动发送飞书通知
+      - name: 发送飞书通知
+        if: always()
+        env:
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          EXIT_CODE: ${{ steps.test.outputs.EXIT_CODE }}
+        run: |
+          if [ "$EXIT_CODE" = "0" ]; then
+            STATUS="✅ 测试通过"
+            COLOR="green"
+          else
+            STATUS="❌ 测试失败"
+            COLOR="red"
+          fi
+
+          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure-report/${{ github.run_id }}/"
+          CONTENT="自动化测试完成\\\\n分支：${{ github.ref_name }}\\\\nSHA：${{ github.sha }}\\\\n结果：$STATUS\\\\n报告：$REPORT_URL"
+
+          JSON=$(jq -n \
+            --arg title "$STATUS - 八爪鱼接口自动化" \
+            --arg content "$CONTENT" \
+            --arg color "$COLOR" \
+            '{msg_type: "interactive", card: {header: {title: {tag: "plain_text", content: $title}, template: $color}, elements: [{tag: "markdown", content: $content}]}}')
+
+          curl -s -X POST "$FEISHU_WEBHOOK" -H "Content-Type: application/json" -d "$JSON"
 
       # 第十三步：邮件通知需要先下载 artifact 作为附件
       - name: 下载报告 artifact（用于邮件附件）
