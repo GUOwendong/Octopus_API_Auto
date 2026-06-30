@@ -8,10 +8,11 @@ A lightweight, extensible API automation project for the Octopus (八爪鱼) sys
 
 - **Framework Architecture** — Pluggable `AuthProvider` and `ApiClient` with clean separation; no framework code changes when switching systems.
 - **Layered Architecture** — `base` (HTTP client) → `integrations` (auth + API client) → `services` (business logic) → `tests` (test cases).
+- **Auto Login** — Automatically obtain and refresh tokens via username/password; no need to manually copy tokens from browser DevTools.
 - **Data-Driven** — Supports JSON / YAML / Excel test data; `pytest.mark.parametrize` integration.
 - **Random Data Generation** — `generate_orders.py` creates unique test data per run, avoiding conflicts.
 - **Allure Reports** — Built-in Allure integration with automatic HTML report generation.
-- **CI/CD Ready** — Pre-configured pipelines for GitHub Actions, GitLab CI, and Gitee (with DingTalk/email notifications).
+- **Multi-Platform CI/CD** — Pre-configured pipelines for GitHub Actions / GitLab CI / Gitee / Jenkins, with DingTalk / WeCom / Feishu / Email notifications.
 - **Code Quality** — `black` + `isort` + `pre-commit` hooks out of the box.
 - **Failure Snapshots** — Automatic context snapshot saved when a test fails, for fast triage.
 
@@ -60,14 +61,15 @@ Create a `.env` file in the project root:
 ```env
 # =================== Octopus System ===================
 OCTOPUS_BASE_URL=http://api.wxorder.taover.com
-OCTOPUS_TOKEN=<JWT token copied from browser DevTools>
+OCTOPUS_USERNAME=your_phone_number
+OCTOPUS_PASSWORD=your_password
 
 # =================== General ==========================
 TEST_ENV=test
 API_TIMEOUT=30
 ```
 
-> Get `OCTOPUS_TOKEN` from browser F12 → Network → any request → Request Headers → copy the value after `Authorization: Bearer==`.
+> On startup, the program automatically calls the `/login` endpoint using `OCTOPUS_USERNAME` + `OCTOPUS_PASSWORD` to obtain a token. When the token expires, it auto-refreshes — no manual maintenance required.
 
 ### 4. Run Tests
 
@@ -81,7 +83,7 @@ uv run pytest tests/test_octopus/test_product_flow.py -v -s       # Product
 uv run pytest tests/test_octopus/test_channel_flow.py -v -s       # Channel
 uv run pytest tests/test_octopus/test_order_flow.py -v -s         # Order
 
-# Health check (verify token is valid)
+# Health check (verify connectivity)
 uv run pytest tests/test_octopus/test_health.py -v -s
 
 # Run with Allure report
@@ -116,9 +118,9 @@ Octopus_API_Auto/
 │   ├── auth_provider.py               #   AuthProvider ABC + StaticTokenAuth
 │   └── octopus/                       #   Octopus system integration
 │       ├── __init__.py                #     Standard setup flow documentation
-│       ├── auth.py                    #     Reads OCTOPUS_TOKEN from .env
+│       ├── auth.py                    #     Login via username/password, auto token refresh
 │       ├── api_client.py              #     HTTP client (Bearer== format)
-│       └── error_code.py              #     Error code mapping (TBD)
+│       └── error_code.py              #     Error code mapping
 │
 ├── services/octopus/                  # Business service layer ★
 │   ├── warehouse_service.py           #   Warehouse: add / search / list_all / delete
@@ -139,6 +141,10 @@ Octopus_API_Auto/
 │   ├── xlsx/
 │   └── yaml/
 │
+├── .github/workflows/ci.yaml          # GitHub Actions CI pipeline
+├── .gitlab-ci.yml                     # GitLab CI pipeline
+├── .gitee/workflows/ci.yaml           # Gitee CI pipeline
+├── Jenkinsfile                        # Jenkins Pipeline ★
 ├── conftest.py                        # Global fixtures (auto failure snapshot)
 ├── main.py                            # CLI entry point (env switching + Allure)
 ├── pyproject.toml                     # Project config & dependencies
@@ -156,8 +162,8 @@ tests layer         →  Only knows "did the API work?"
 services layer      →  Only knows "what URL / method / parameters?"
                        self.client.post("/v1/xxx", json={...})
 
-integrations layer  →  Only knows "how to attach the token?"
-                       "Authorization", "Bearer==xxx"
+integrations layer  →  Only knows "how to get the token / what's the base URL?"
+                       login() → "Authorization", "Bearer==xxx"
 ```
 
 ### Request Flow
@@ -185,6 +191,51 @@ api.wxorder.taover.com              # Server
 2. **Each enterprise owns its `api_client` fixture** — defined in `tests/<enterprise>/conftest.py`.
 3. **Auth is a pluggable interface** — `AuthProvider` ABC; `OctopusAuth` is just one implementation.
 4. **All configuration via environment variables** — no hard-coded URLs or credentials.
+5. **Automatic token management** — `OctopusAuth.login()` obtains tokens via credentials; `get_token()` auto-refreshes on expiry. Layers above never need to know.
+
+## Adding a New Module (Copycat Pattern)
+
+Using "Channel" as an example, each module needs only 2 files:
+
+**1. `services/octopus/channel_service.py` (API encapsulation):**
+
+```python
+class ChannelService:
+    def __init__(self, client):
+        self.client = client
+
+    def add(self, name, **kwargs):
+        resp = self.client.post("/v1/wxorderchannel", json={"name": name, **kwargs})
+        return resp.json()
+
+    def search(self, name):
+        resp = self.client.get("/v1/wxorderchannel", params={"name": name})
+        return resp.json()
+
+    def delete(self, channel_id):
+        resp = self.client.delete(f"/v1/wxorderchannel/{channel_id}")
+        return resp.json()
+```
+
+**2. `tests/test_octopus/test_channel_flow.py` (test case):**
+
+```python
+from services.octopus.channel_service import ChannelService
+
+class TestChannel:
+    def test_channel_flow(self, api_client):
+        service = ChannelService(api_client)
+
+        add_res = service.add(name="test_channel")
+        assert add_res.get("code") == "ok", f"Add failed: {add_res.get('error', add_res)}"
+
+        search_res = service.search(name="test_channel")
+        assert search_res.get("code") == "ok", f"Search failed: {search_res.get('error', search_res)}"
+
+        channel_id = search_res.get("data", {}).get("rows", [{}])[0].get("id")
+        del_res = service.delete(channel_id)
+        assert del_res.get("code") == "ok", f"Delete failed: {del_res.get('error', del_res)}"
+```
 
 ## Adding a New Enterprise
 
@@ -254,70 +305,57 @@ ALICLOUD_ACCESS_TOKEN=your_token
 
 **No framework files (`base/`, `common/`, `config/`, root `conftest.py`) need any changes.**
 
-## Adding a New Module (Copycat Pattern)
-
-Using "Channel" as an example, each module needs only 2 files:
-
-**1. `services/octopus/channel_service.py` (API encapsulation):**
-
-```python
-class ChannelService:
-    def __init__(self, client):
-        self.client = client
-
-    def add(self, name, **kwargs):
-        resp = self.client.post("/v1/wxorderchannel", json={"name": name, **kwargs})
-        return resp.json()
-
-    def search(self, name):
-        resp = self.client.get("/v1/wxorderchannel", params={"name": name})
-        return resp.json()
-
-    def delete(self, channel_id):
-        resp = self.client.delete(f"/v1/wxorderchannel/{channel_id}")
-        return resp.json()
-```
-
-**2. `tests/test_octopus/test_channel_flow.py` (test case):**
-
-```python
-from services.octopus.channel_service import ChannelService
-
-class TestChannel:
-    def test_channel_flow(self, api_client):
-        service = ChannelService(api_client)
-
-        add_res = service.add(name="test_channel")
-        assert add_res.get("code") == "ok"
-
-        search_res = service.search(name="test_channel")
-        assert search_res.get("code") == "ok"
-
-        channel_id = search_res["data"]["rows"][0]["id"]
-        del_res = service.delete(channel_id)
-        assert del_res.get("code") == "ok"
-```
-
 ## CI/CD
+
+### Common Secrets Across Platforms
+
+All platforms require these secrets for CI to work:
+
+| Secret | Description | Required |
+|--------|-------------|----------|
+| `OCTOPUS_USERNAME` | Octopus login phone number | **Yes** |
+| `OCTOPUS_PASSWORD` | Octopus login password | **Yes** |
+| `DINGTALK_WEBHOOK` | DingTalk bot Webhook | No |
+| `WECOM_WEBHOOK` | WeCom bot Webhook | No |
+| `FEISHU_WEBHOOK` | Feishu bot Webhook | No |
+| `MAIL_USERNAME` | Email sender account | No |
+| `MAIL_PASSWORD` | Email SMTP password | No |
+| `MAIL_TO` | Email recipient | No |
 
 ### GitHub Actions
 
-Configure these secrets in GitHub `Settings → Secrets and variables → Actions`:
+Config path: `Settings → Secrets and variables → Actions → New repository secret`
 
-| Secret | Description |
-|--------|-------------|
-| `OCTOPUS_TOKEN` | Octopus JWT Token (required) |
-| `DING_WEBHOOK` | DingTalk bot webhook URL |
+Pre-configured `.github/workflows/ci.yaml`; auto-triggered on push. Notifications: DingTalk / WeCom / Feishu / Email.
 
 ### GitLab CI
 
-Set CI/CD variables in GitLab project `Settings → CI/CD → Variables`:
+Config path: `Settings → CI/CD → Variables → Add variable`
 
-- `OCTOPUS_TOKEN`
+Pre-configured `.gitlab-ci.yml`; auto-triggered on push or MR.
 
 ### Gitee
 
-Add `OCTOPUS_TOKEN` etc. in project settings → Secrets.
+Config path: `Enterprise Settings → Secrets`
+
+Pre-configured `.gitee/workflows/ci.yaml`.
+
+### Jenkins
+
+Config path: `Dashboard → Credentials → Global Credentials → Add Credentials` (type: Secret Text)
+
+| Credential ID | Value | Required |
+|--------------|-------|----------|
+| `octopus-username` | Your phone number | **Yes** |
+| `octopus-password` | Your password | **Yes** |
+| `dingtalk-webhook` | DingTalk bot URL | No |
+| `wecom-webhook` | WeCom bot URL | No |
+| `feishu-webhook` | Feishu bot URL | No |
+| `mail-to` | Recipient email | No |
+
+Jenkins pipeline defined in `Jenkinsfile`. Supports scheduled triggers (daily), GitLab push/MR triggers, and manual triggers.
+
+> **Note**: Public runners on GitHub Actions / GitLab CI are hosted overseas and cannot reach the internal server `api.wxorder.taover.com`. To run tests in CI, deploy a self-hosted runner on an intranet machine.
 
 ## Code Quality
 
@@ -334,15 +372,19 @@ uv run isort .
 
 ### Q: Tests return `not_authorized`?
 
-Your token has expired. Open browser DevTools (F12), copy the new `Authorization: Bearer==xxx` value, and update `OCTOPUS_TOKEN` in `.env`.
+Usually caused by an expired token. Since the project now supports auto-login with credentials, this should rarely occur. If it does, verify that `OCTOPUS_USERNAME` and `OCTOPUS_PASSWORD` in `.env` are correct, and that the account is not locked.
 
 ### Q: Warehouse test fails with "this group is already in use"?
 
-Each group can only be bound to one warehouse. `test_warehouse_flow.py` uses a "borrow group" strategy: list all warehouses, delete one to free its group, then reuse that group for the test.
+Each WeChat group can only be bound to one warehouse. `test_warehouse_flow.py` uses a "borrow group" strategy: list all warehouses (`size=100`), delete one to free its group, then reuse that group for the test. If all online warehouses have associated data (orders/products) and cannot be deleted, contact ops to create a dedicated test group.
 
 ### Q: Order test fails with "Excel file is being processed"?
 
-Order generation is asynchronous. Wait a minute and re-run, or change the consignee name.
+Order generation is asynchronous — the previous test's Excel file is still being processed. Wait a minute and re-run, or change the consignee name (`generate_orders.py` generates random data each time).
+
+### Q: Order search returns empty results?
+
+There is an async processing delay after the `bind_goods` step. A `time.sleep(3)` is needed after bind_goods to wait for server-side processing.
 
 ### Q: How do I add a new dependency?
 
