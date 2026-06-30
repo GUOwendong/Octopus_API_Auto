@@ -97,7 +97,8 @@ pipeline {
                 // Allure 报告（带历史趋势对比）
                 allure includeProperties: false,
                        results: [[path: 'reports/allure-results']],
-                       reportBuildPolicy: 'ALWAYS'
+                       reportBuildPolicy: 'ALWAYS',
+                       javaHome: '/opt/java/openjdk'
 
                 // JUnit 测试报告（Jenkins 内置，显示测试趋势图）
                 junit allowEmptyResults: true, testResults: 'reports/junit.xml'
